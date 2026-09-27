@@ -18,6 +18,7 @@ def settings(tmp_path) -> Settings:
         modelspecs_dir=MODELSPECS_DIR,
         db_path=tmp_path / "test.db",
         tokens={"dev-token": "dev-org"},
+        environment="development",
     )
 
 
