@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from pigeon.settings import DEFAULT_DEV_TOKEN, MIN_PRODUCTION_TOKEN_LENGTH, Settings
+from pigeon.settings import (
+    DEFAULT_DEV_TOKEN,
+    DEFAULT_MEDIA_MAX_BYTES,
+    MIN_PRODUCTION_TOKEN_LENGTH,
+    Settings,
+)
 
 _ENV_VARS = (
     "PIGEON_ENV",
@@ -10,6 +15,7 @@ _ENV_VARS = (
     "PIGEON_PROVIDER",
     "PIGEON_MODELSPECS_DIR",
     "PIGEON_DB_PATH",
+    "PIGEON_MEDIA_MAX_BYTES",
 )
 
 FAKE_PROD_TOKEN = "test-token-" + "x" * MIN_PRODUCTION_TOKEN_LENGTH
@@ -63,6 +69,21 @@ def test_unknown_environment_rejected(monkeypatch):
     monkeypatch.setenv("PIGEON_TOKENS", f'{{"{FAKE_PROD_TOKEN}": "test-org"}}')
     with pytest.raises(ValueError, match="PIGEON_ENV must be one of"):
         Settings.from_env()
+
+
+def test_media_max_bytes_default_and_override(monkeypatch):
+    monkeypatch.setenv("PIGEON_ENV", "development")
+    assert Settings.from_env().media_max_bytes == DEFAULT_MEDIA_MAX_BYTES
+    monkeypatch.setenv("PIGEON_MEDIA_MAX_BYTES", "2048")
+    assert Settings.from_env().media_max_bytes == 2048
+
+
+def test_media_max_bytes_rejected(monkeypatch):
+    monkeypatch.setenv("PIGEON_ENV", "development")
+    for raw in ("0", "-1", "nope"):
+        monkeypatch.setenv("PIGEON_MEDIA_MAX_BYTES", raw)
+        with pytest.raises(ValueError, match="PIGEON_MEDIA_MAX_BYTES"):
+            Settings.from_env()
 
 
 @pytest.mark.parametrize("environment", ["development", "production"])

@@ -6,6 +6,8 @@ from typing import Literal, Optional
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
+from .urls import validate_inference_endpoint
+
 Runtime = Literal["ollama", "vllm", "hf-inference", "endpoint"]
 Mode = Literal["signal", "completion"]
 Format = Literal["chat", "chat-harmony", "classifier"]
@@ -16,6 +18,13 @@ class ModelRef(BaseModel):
     id: str
     runtime: Runtime
     endpoint: Optional[str] = None  # base URL (chat) or full inference URL (classifier)
+
+    @field_validator("endpoint")
+    @classmethod
+    def _validate_endpoint(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value == "":
+            return None
+        return validate_inference_endpoint(value)
 
 
 class PromptSpec(BaseModel):
