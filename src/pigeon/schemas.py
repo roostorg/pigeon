@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
+
+from .modelspecs import ModelSpec
 
 # ---- Discover (GET /v1/modelspecs) ----
 
@@ -27,6 +29,21 @@ class ModelSpecSummary(BaseModel):
 
 class ModelSpecsResponse(BaseModel):
     modelspecs: list[ModelSpecSummary]
+
+
+class ModelSpecCreate(ModelSpec):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ModelSpecEnable(BaseModel):
+    version: str
+    endpoint: Optional[str] = None
+    credential_ref: Optional[str] = None
+
+
+class ModelSpecImport(BaseModel):
+    text: str = Field(min_length=1, max_length=200_000)
+    dry_run: bool = False
 
 
 # ---- Classify (POST /v1/classify) ----

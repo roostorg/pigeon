@@ -20,34 +20,38 @@ def _titlecase(label: str) -> str:
 
 
 class Registry:
-    """Turns loaded modelspecs + per-org policies into the signal list a consumer sees,
+    """Turns DB-backed modelspecs + per-org policies into the signal list a consumer sees,
     and resolves a model reference ("name" or "name@version") to something callable."""
 
-    def __init__(self, modelspecs: dict[str, ModelSpec], store: Store):
-        self.modelspecs = modelspecs
+    def __init__(self, store: Store):
         self.store = store
 
     def ensure_defaults(self, org_id: str) -> None:
-        """First contact for an org enables every base model spec. Prototype convenience."""
-        if not self.store.enabled_modelspecs(org_id):
-            for name in self.modelspecs:
-                self.store.enable(org_id, name)
+        """Convenience seed: bind every spec only when the org has no bindings."""
+        if not self.store.enabled_bindings(org_id):
+            for row in self.store.modelspec_versions():
+                self.store.enable(org_id, row["name"], row["version"])
 
     def list_signals(self, org_id: str) -> list[ModelSpecSummary]:
         self.ensure_defaults(org_id)
-        enabled = self.store.enabled_modelspecs(org_id)
         summaries: list[ModelSpecSummary] = []
 
         # Fixed-label classifiers are exposed directly. BYOP bases are exposed only through
         # bound policies (below); completion models are Osprey-only and not signals.
-        for name, mf in self.modelspecs.items():
-            if name in enabled and mf.kind == "classifier":
+        for binding in self.store.enabled_bindings(org_id):
+            name = binding["model_name"]
+            mf = self.store.get_modelspec(name, binding["spec_version"])
+            if mf is not None and mf.kind == "classifier":
                 summaries.append(self._classifier_summary(mf))
 
         for pol in self.store.latest_policies(org_id):
-            base = self.modelspecs.get(pol["base"])
+            base = self.store.get_modelspec(pol["base"], pol.get("base_version"))
             if base is None:
                 continue
+            binding = self.store.get_binding(org_id, pol["base"])
+            if binding and binding.get("endpoint"):
+                base = base.model_copy(deep=True)
+                base.model.endpoint = binding["endpoint"]
             summaries.append(
                 ModelSpecSummary(
                     id=pol["name"],
@@ -75,20 +79,28 @@ class Registry:
     def resolve(self, org_id: str, model_ref: str) -> Resolved:
         name, _, version = model_ref.partition("@")
 
-        pol = self.store.get_policy(
-            org_id, name, int(version) if version.isdigit() else None
-        )
+        pol = self.store.get_policy(org_id, name, int(version) if version.isdigit() else None)
         if pol is not None:
-            base = self.modelspecs.get(pol["base"])
+            base = self.store.get_modelspec(pol["base"], pol.get("base_version"))
             if base is None:
                 raise KeyError(
                     f"base model spec '{pol['base']}' not found for policy '{name}'"
                 )
+            binding = self.store.get_binding(org_id, pol["base"])
+            if binding and binding.get("endpoint"):
+                base = base.model_copy(deep=True)
+                base.model.endpoint = binding["endpoint"]
             return Resolved(
                 modelspec=base, version=str(pol["version"]), bound_policy=pol["policy_text"]
             )
 
-        mf = self.modelspecs.get(name)
+        binding = self.store.get_binding(org_id, name)
+        mf = self.store.get_modelspec(name, version or (binding or {}).get("spec_version"))
         if mf is None:
             raise KeyError(f"unknown model '{name}'")
+        if version and mf.version != version:
+            raise KeyError(f"unknown model '{model_ref}'")
+        if binding and binding.get("endpoint"):
+            mf = mf.model_copy(deep=True)
+            mf.model.endpoint = binding["endpoint"]
         return Resolved(modelspec=mf, version=mf.version, bound_policy=None)

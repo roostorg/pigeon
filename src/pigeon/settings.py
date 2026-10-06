@@ -19,6 +19,7 @@ class Settings:
     db_path: Path
     tokens: dict[str, str]  # bearer token -> org id
     environment: str = "production"
+    seed_modelspecs: bool = False
 
     def __post_init__(self) -> None:
         if self.environment not in ENVIRONMENTS:
@@ -63,4 +64,5 @@ class Settings:
             db_path=Path(os.environ.get("PIGEON_DB_PATH", "pigeon.db")),
             tokens=tokens,
             environment=environment,
+            seed_modelspecs=os.environ.get("PIGEON_SEED_MODELSPECS") == "1",
         )
