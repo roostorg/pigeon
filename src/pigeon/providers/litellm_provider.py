@@ -5,6 +5,7 @@ from typing import Any, Optional
 import httpx
 
 from ..modelspecs import ModelSpec
+from ..urls import validate_inference_endpoint, validate_media_url
 
 # LiteLLM model-name prefixes per runtime. See https://docs.litellm.ai/docs/providers
 _RUNTIME_PREFIX = {
@@ -24,8 +25,9 @@ class LiteLLMProvider:
     """Live provider. Chat/completion goes through LiteLLM; fixed-label classifiers hit an
     HF-style text-classification endpoint directly (LiteLLM targets generative APIs)."""
 
-    def __init__(self, timeout_s: float = 30.0):
+    def __init__(self, timeout_s: float = 30.0, media_max_bytes: int = 10_000_000):
         self._timeout = timeout_s
+        self._media_max_bytes = media_max_bytes
 
     async def run_chat(self, mf: ModelSpec, messages: list[dict]) -> str:
         import litellm
@@ -37,7 +39,7 @@ class LiteLLMProvider:
             "timeout": self._timeout,
         }
         if mf.model.endpoint:
-            kwargs["api_base"] = mf.model.endpoint
+            kwargs["api_base"] = validate_inference_endpoint(mf.model.endpoint)
         response = await litellm.acompletion(**kwargs)
         return response.choices[0].message.content or ""
 
@@ -56,7 +58,7 @@ class LiteLLMProvider:
             "timeout": self._timeout,
         }
         if mf.model.endpoint:
-            kwargs["api_base"] = mf.model.endpoint
+            kwargs["api_base"] = validate_inference_endpoint(mf.model.endpoint)
         response = await litellm.acompletion(**kwargs)
         entries = response.choices[0].logprobs.content[0].top_logprobs
         return [(entry.token, entry.logprob) for entry in entries]
@@ -69,10 +71,17 @@ class LiteLLMProvider:
             raise ValueError(
                 f"classifier model spec '{mf.name}' requires model.endpoint"
             )
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
+        url = validate_inference_endpoint(url)
+        async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=False) as client:
             if media_url is not None:
-                media = await client.get(media_url)
+                safe_media = validate_media_url(media_url)
+                media = await client.get(safe_media)
                 media.raise_for_status()
+                # Cap downloaded media to avoid unbounded memory use.
+                if len(media.content) > self._media_max_bytes:
+                    raise ValueError(
+                        f"mediaUrl response exceeds {self._media_max_bytes} bytes"
+                    )
                 response = await client.post(
                     url,
                     content=media.content,

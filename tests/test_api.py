@@ -274,6 +274,27 @@ def test_modelspec_register_and_import_require_auth(client):
     ).status_code == 401
 
 
+def test_enable_rejects_unsafe_endpoint(client, auth):
+    resp = client.post(
+        "/v1/modelspecs/shieldgemma-2b/enable",
+        headers=auth,
+        json={"version": "3", "endpoint": "http://169.254.169.254/"},
+    )
+    assert resp.status_code == 422
+
+
+def test_classify_rejects_unsafe_media_url(client, auth):
+    resp = client.post(
+        "/v1/classify",
+        headers=auth,
+        json={
+            "model": "shieldgemma-2b",
+            "input": {"mediaUrl": "http://169.254.169.254/latest/meta-data"},
+        },
+    )
+    assert resp.status_code == 422
+
+
 def test_policy_delete_removes_latest_listing(client, auth):
     assert client.post(
         "/v1/policies",

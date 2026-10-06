@@ -10,6 +10,20 @@ DEFAULT_DEV_ORG = "dev-org"
 
 ENVIRONMENTS = ("development", "production")
 MIN_PRODUCTION_TOKEN_LENGTH = 32
+DEFAULT_MEDIA_MAX_BYTES = 10_000_000
+
+
+def _positive_int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw, 10)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if value < 1:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
 
 
 @dataclass(frozen=True)
@@ -20,6 +34,7 @@ class Settings:
     tokens: dict[str, str]  # bearer token -> org id
     environment: str = "production"
     seed_modelspecs: bool = False
+    media_max_bytes: int = DEFAULT_MEDIA_MAX_BYTES
 
     def __post_init__(self) -> None:
         if self.environment not in ENVIRONMENTS:
@@ -65,4 +80,8 @@ class Settings:
             tokens=tokens,
             environment=environment,
             seed_modelspecs=os.environ.get("PIGEON_SEED_MODELSPECS") == "1",
+            media_max_bytes=_positive_int_env(
+                "PIGEON_MEDIA_MAX_BYTES",
+                DEFAULT_MEDIA_MAX_BYTES,
+            ),
         )

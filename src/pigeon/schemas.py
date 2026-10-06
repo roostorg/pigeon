@@ -5,6 +5,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .modelspecs import ModelSpec
+from .urls import validate_inference_endpoint, validate_media_url
 
 # ---- Discover (GET /v1/modelspecs) ----
 
@@ -40,6 +41,13 @@ class ModelSpecEnable(BaseModel):
     endpoint: Optional[str] = None
     credential_ref: Optional[str] = None
 
+    @field_validator("endpoint")
+    @classmethod
+    def _validate_endpoint(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value == "":
+            return None
+        return validate_inference_endpoint(value)
+
 
 class ModelSpecImport(BaseModel):
     text: str = Field(min_length=1, max_length=200_000)
@@ -73,6 +81,13 @@ class ClassifyInput(BaseModel):
     text: Optional[str] = None
     mediaUrl: Optional[str] = None
     context: Optional[ClassifyContext] = None
+
+    @field_validator("mediaUrl")
+    @classmethod
+    def _validate_media_url(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value == "":
+            return None
+        return validate_media_url(value)
 
 
 class ClassifyRequest(BaseModel):

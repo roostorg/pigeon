@@ -17,7 +17,7 @@ def _make_provider(settings: Settings) -> ProviderClient:
     if settings.provider == "live":
         from .providers.litellm_provider import LiteLLMProvider
 
-        return LiteLLMProvider()
+        return LiteLLMProvider(media_max_bytes=settings.media_max_bytes)
     if settings.provider == "local":
         from .providers.transformers_provider import TransformersProvider
 
