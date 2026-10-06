@@ -1,0 +1,138 @@
+tests/test_store.py
+  s_18c0d291712c63::t_28133896bd486e 1-77
+Dockerfile
+  s_0f6b6dd423f8fb::t_c6c3dacaf29fd4 29
+  s_0f6b6dd423f8fb::t_2f10198df331b7 1-10,12-28,30-40
+  s_18c0d291712c63::t_e549ac579d1a07 11
+compose.yaml
+  s_18c0d291712c63::t_2a96fe4509fcb7 7-9,11-21
+  s_18c0d291712c63::t_d4cdeb3a6f3ea7 23-25,30-36
+  s_18c0d291712c63::t_982433803c1bcb 22
+  s_0f6b6dd423f8fb::t_3d2952eda83fc3 1-6,10,26-29,37-39
+tests/test_settings.py
+  s_18c0d291712c63::t_bb0779de3a5ca5 74-82,84-88
+  s_18c0d291712c63::t_6363d1bfc97ca5 18
+  s_18c0d291712c63::t_fe700906d285e7 5-10
+  s_18c0d291712c63::t_6038e2ebf1436f 83
+tests/test_registry.py
+  s_18c0d291712c63::t_73b5d2f541c5b1 1-53
+.env.example
+  s_18c0d291712c63::t_5d7c538728c1f5 31,33
+  s_18c0d291712c63::t_7064e0a18b210f 32
+  s_0f6b6dd423f8fb::t_63284586284cb4 13-16,28-30
+src/pigeon/api.py
+  s_cb74c99344d164::t_10e61b78ef7bd3 105
+  s_d17d45dbe5c753::t_70439c4f31eb27 3,6,8,19-21,40,45-63,68-91,145-149
+  s_18c0d291712c63::t_4e2b3f4e2193b8 131
+  s_18c0d291712c63::t_2dbc437a684d16 41-44,64-67
+  s_d17d45dbe5c753::t_92997c1fb47757 150
+src/pigeon/urls.py
+  s_18c0d291712c63::t_96a032028b5101 1-98
+src/pigeon/main.py
+  s_18c0d291712c63::t_6d410fb56d9b01 20
+  s_d17d45dbe5c753::t_d94de7e5b923d4 30-37
+src/pigeon/settings.py
+  s_18c0d291712c63::t_9acc27925c35fa 13-15,17-23,26
+  s_18c0d291712c63::t_fe52a8079a3185 16,24-25
+  s_18c0d291712c63::t_987eaa4f961a51 37
+  s_18c0d291712c63::t_bfdf853bee1f79 92-95
+  s_d17d45dbe5c753::t_dcf4a3eae738c5 36,91
+  s_0f6b6dd423f8fb::t_fc0929c6eb3fa4 67,73-80
+src/pigeon/registry.py
+  s_18c0d291712c63::t_80f4e9dc326976 23,26
+  s_d17d45dbe5c753::t_012483e1c8ee84 30-33,44,48,82,84,97-98,101-105
+  s_d17d45dbe5c753::t_e0a500fe2d75bf 41-43,51-54,89-92
+src/pigeon/modelspecs.py
+  s_18c0d291712c63::t_9c4450941f2acb 9-10,22-27
+  s_18c0d291712c63::t_645fab29fc1945 28
+src/pigeon/providers/litellm_provider.py
+  s_18c0d291712c63::t_bf1a9d171cf58d 42,61,74,77-78,80
+  s_18c0d291712c63::t_c7b82cf99b5bce 8
+  s_18c0d291712c63::t_ce122ed505386d 81-84
+  s_18c0d291712c63::t_1b623258c4af0a 28,30
+  s_18c0d291712c63::t_68047ad6a94bc6 75
+tests/test_urls.py
+  s_18c0d291712c63::t_f47207cfbcdd29 1-29
+src/pigeon/cli.py
+  s_0f6b6dd423f8fb::t_7edbfbaf6cf699 3-4,13-14
+.dockerignore
+  s_0f6b6dd423f8fb::t_0d50ec329eb33b 1-10
+src/pigeon/schemas.py
+  s_18c0d291712c63::t_c3f707342d0a0b 8
+  s_18c0d291712c63::t_82ca2083076bfe 44-49,51,53
+  s_cb74c99344d164::t_4e8ef760da017f 60-77
+  s_cb74c99344d164::t_5c0bb6ca894f09 78-79,83
+  s_18c0d291712c63::t_5e961be17a982e 85-90
+  s_d17d45dbe5c753::t_e4a1a06fded317 5-7,35-43,50,52,54
+  s_d17d45dbe5c753::t_d232c2ac75e612 55-56
+src/pigeon/classify.py
+  s_cb74c99344d164::t_ac854cfdc421cf 33,69
+  s_cb74c99344d164::t_16dbf5c3a6abd8 15,27-32,75
+  s_cb74c99344d164::t_bfad03b8715aea 18-20
+  s_cb74c99344d164::t_f88b1a04dbef39 21-26
+  s_cb74c99344d164::t_768111a6d3e31b 16-17
+README.md
+  s_18c0d291712c63::t_8ead30e7356590 49
+  s_0f6b6dd423f8fb::t_ed5366f21ffd9d 56-57,60-64,87
+  s_18c0d291712c63::t_b3ac05f6843ce7 58-59,65-66,70,73-76,80-81,83-86
+  s_18c0d291712c63::t_4265d3af944666 163,165
+  s_18c0d291712c63::t_5e5efaecb8f972 67-69,71-72,77-79,82
+  s_18c0d291712c63::t_204869a5dfb550 164
+  s_d17d45dbe5c753::t_1a0d23dca75cf7 47-48,50
+  s_18c0d291712c63::t_835ffc15c347de 158,160-162,168
+tests/test_api.py
+  s_d17d45dbe5c753::t_8cdbf2d7349a63 242-261,298-305
+  s_18c0d291712c63::t_f41a1c5ac20571 262-297
+  s_18c0d291712c63::t_0fbf841980a232 306-352
+  s_cb74c99344d164::t_2f3153668ecdd6 57-99
+src/pigeon/store.py
+  s_d17d45dbe5c753::t_f18fb0e8deda0c 5,9-10,21,38-51,53-55
+  s_d17d45dbe5c753::t_656a81ec0a688c 20
+  s_d17d45dbe5c753::t_19491e442ae5be 88,90-144,146-151,155,157-158,160-193
+  s_d17d45dbe5c753::t_f395777558e99f 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e885192f7da3a53966e51d4041601161bcf6c32f",
+  "prompts": {},
+  "humans": {
+    "h_228f5682388812": {
+      "author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0f6b6dd423f8fb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d7e466b9-7779-4970-8b23-42f140fc8d6a",
+        "model": "gpt-5.6-luna-medium"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    },
+    "s_18c0d291712c63": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d60dc2d8-981e-4562-850c-9642b8423733",
+        "model": "default"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    },
+    "s_cb74c99344d164": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b6d49d1a-48d1-40d8-84ad-10fa3b1779ab",
+        "model": "gpt-5.6-luna-medium"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    },
+    "s_d17d45dbe5c753": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dee4680f-67f2-4f23-811a-96615eba09cb",
+        "model": "gpt-5.6-luna-medium"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
