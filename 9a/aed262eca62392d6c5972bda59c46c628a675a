@@ -1,0 +1,32 @@
+Dockerfile
+  s_18c0d291712c63::t_34895064bd001b 1-40
+.env.example
+  s_18c0d291712c63::t_ac4535ec930670 13-16
+  s_18c0d291712c63::t_18a85e110e4900 29-31
+.dockerignore
+  s_18c0d291712c63::t_34895064bd001b 1-10
+src/pigeon/cli.py
+  s_18c0d291712c63::t_34895064bd001b 3-4,13-14
+README.md
+  s_18c0d291712c63::t_4ecbe0d9a36ddc 73-104
+compose.yaml
+  s_18c0d291712c63::t_34895064bd001b 1-39
+src/pigeon/settings.py
+  s_18c0d291712c63::t_755abb0436d1a3 67,73-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9aaed262eca62392d6c5972bda59c46c628a675a",
+  "prompts": {},
+  "sessions": {
+    "s_18c0d291712c63": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d60dc2d8-981e-4562-850c-9642b8423733",
+        "model": "default"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
