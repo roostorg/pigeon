@@ -1,0 +1,25 @@
+src/pigeon/schemas.py
+  s_18c0d291712c63::t_e296c54b84b909 5,52-71,75
+src/pigeon/classify.py
+  s_18c0d291712c63::t_69b2766fd8a352 15-33,69,75
+tests/test_api.py
+  s_18c0d291712c63::t_45f7a5e9deed6c 57-99
+src/pigeon/api.py
+  s_18c0d291712c63::t_fb7b1f9ff44e92 105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "265e713e22416e2a530ce326559e5a18dbedbab2",
+  "prompts": {},
+  "sessions": {
+    "s_18c0d291712c63": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d60dc2d8-981e-4562-850c-9642b8423733",
+        "model": "default"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
