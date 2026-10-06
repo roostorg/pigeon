@@ -1,0 +1,42 @@
+src/pigeon/settings.py
+  s_18c0d291712c63::t_952819b4fd85a2 67
+  s_18c0d291712c63::t_bbb479c025742a 22
+src/pigeon/main.py
+  s_18c0d291712c63::t_fbb8ebca840617 30-37
+tests/test_store.py
+  s_18c0d291712c63::t_f77906e4d73bcb 1-77
+tests/test_registry.py
+  s_18c0d291712c63::t_f77906e4d73bcb 1-53
+README.md
+  s_18c0d291712c63::t_64a5dd854e5c49 64-67
+src/pigeon/store.py
+  s_18c0d291712c63::t_f77906e4d73bcb 5,9-10,16,20-21,38-51,53-55,88,90-144,146-151,155,157-158,160-193
+src/pigeon/registry.py
+  s_18c0d291712c63::t_f77906e4d73bcb 23,26,30-33,41-44,48,51-54,82,84,89-92,97-98,101-105
+src/pigeon/schemas.py
+  s_18c0d291712c63::t_3b22a74a554f37 5-7,34-46
+  s_18c0d291712c63::t_9608265d909414 47-48
+.env.example
+  s_18c0d291712c63::t_64a5dd854e5c49 24-26
+src/pigeon/api.py
+  s_18c0d291712c63::t_b9a7b45f2c7525 3,6,8,19-21,40-91,130,144-148
+  s_18c0d291712c63::t_545539d5bb3eec 149
+tests/test_api.py
+  s_18c0d291712c63::t_64a5dd854e5c49 199-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03a3b670f88808f1aa6d03f12ddf6d3dbd25d4a6",
+  "prompts": {},
+  "sessions": {
+    "s_18c0d291712c63": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d60dc2d8-981e-4562-850c-9642b8423733",
+        "model": "default"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
