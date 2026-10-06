@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .modelspecs import ModelSpec
 
@@ -49,9 +49,30 @@ class ModelSpecImport(BaseModel):
 # ---- Classify (POST /v1/classify) ----
 
 
+class ThreadMessage(BaseModel):
+    role: Optional[str] = Field(default=None, max_length=64)
+    text: str = Field(min_length=1, max_length=10_000)
+
+    @field_validator("role", "text")
+    @classmethod
+    def reject_null_bytes(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None and "\x00" in value:
+            raise ValueError("context values must not contain null bytes")
+        return value
+
+
+class ThreadContext(BaseModel):
+    messages: list[ThreadMessage] = Field(default_factory=list, max_length=100)
+
+
+class ClassifyContext(BaseModel):
+    thread: Optional[ThreadContext] = None
+
+
 class ClassifyInput(BaseModel):
     text: Optional[str] = None
     mediaUrl: Optional[str] = None
+    context: Optional[ClassifyContext] = None
 
 
 class ClassifyRequest(BaseModel):
