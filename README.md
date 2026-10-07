@@ -55,8 +55,16 @@ uv sync --extra dev
 uv run pytest                 # runs against the mock provider, no network
 
 cp .env.example .env
-uv run pigeon                 # serves on http://127.0.0.1:8900
+uv run --env-file .env pigeon # serves on http://127.0.0.1:8900
 ```
+
+Nothing loads `.env` automatically, so pass `--env-file` (or export the variables yourself).
+The example file sets `PIGEON_ENV=development`; without it Pigeon runs in production mode.
+
+`PIGEON_ENV` defaults to `production`. In production Pigeon refuses to start unless
+`PIGEON_TOKENS` is set, rejects the default `dev-token`, and requires every token to be at
+least 32 characters (`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`). Tokens
+containing whitespace are rejected in every environment.
 
 Try it (dev token from `.env.example`):
 
@@ -93,7 +101,7 @@ model spec's `model.endpoint` at your runtime. Verified end to end against **Oll
 `endpoint: http://localhost:11434` scores real content through the full Pigeon path.
 
 ```bash
-PIGEON_PROVIDER=live uv run pigeon
+PIGEON_PROVIDER=live uv run --env-file .env pigeon
 ```
 
 ### `local` — in-process transformers (verified with Shieldstral on MPS)
@@ -103,7 +111,7 @@ provider; models load lazily and are cached per id.
 
 ```bash
 uv sync --extra local           # torch, transformers>=5.0
-PIGEON_PROVIDER=local uv run pigeon
+PIGEON_PROVIDER=local uv run --env-file .env pigeon
 ```
 
 Verified end to end with **Shieldstral 1.0-3B** loaded via `AutoModelForImageTextToText` on
