@@ -70,6 +70,38 @@ SQLite is the runtime source of truth for model specs. On an empty database, YAM
 least 32 characters (`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`). Tokens
 containing whitespace are rejected in every environment.
 
+### Docker
+
+Start the development service (mock provider). The host port defaults to
+**127.0.0.1:8900** (not all interfaces):
+
+```bash
+docker compose up --build
+```
+
+Override publish address/port or runtime settings via the shell (compose uses
+`${VAR:-default}` interpolation, so these actually override):
+
+```bash
+PIGEON_PUBLISH_PORT=8901 docker compose up --build
+PIGEON_ENV=production PIGEON_PROVIDER=live PIGEON_TOKENS='{"…":"org"}' docker compose up --build
+```
+
+The compose setup stores SQLite in the `pigeon-data` volume, mounts `./modelspecs`
+read-only, runs as non-root with a read-only root filesystem (`cap_drop: ALL`,
+`no-new-privileges`), and listens on `0.0.0.0` *inside* the container. Native
+runs still default to `127.0.0.1`.
+
+**Hardening when you deploy this same compose file (no separate prod file):**
+
+- Set `PIGEON_ENV=production` and supply strong tokens via `PIGEON_TOKENS` or a
+  mounted `PIGEON_TOKENS_FILE` (Docker secret). Do not commit real secrets.
+- Prefer `PIGEON_PROVIDER=live` and real endpoints; keep `mock` for local only.
+- Keep the default `PIGEON_PUBLISH_ADDR=127.0.0.1`, or put TLS / a reverse proxy
+  in front if you publish more widely.
+- Keep modelspecs read-only; the database volume is the runtime source of truth
+  after the first seed.
+
 Try it (dev token from `.env.example`):
 
 ```bash

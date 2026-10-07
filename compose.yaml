@@ -1,0 +1,39 @@
+services:
+  pigeon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      # Default: localhost only. Override host/port, e.g.:
+      #   PIGEON_PUBLISH_ADDR=0.0.0.0 PIGEON_PUBLISH_PORT=8901 docker compose up
+      - "${PIGEON_PUBLISH_ADDR:-127.0.0.1}:${PIGEON_PUBLISH_PORT:-8900}:8900"
+    environment:
+      # Interpolated so shell / .env can override; hard-coded values cannot.
+      PIGEON_ENV: ${PIGEON_ENV:-development}
+      PIGEON_PROVIDER: ${PIGEON_PROVIDER:-mock}
+      PIGEON_HOST: ${PIGEON_HOST:-0.0.0.0}
+      PIGEON_PORT: ${PIGEON_PORT:-8900}
+      PIGEON_MODELSPECS_DIR: ${PIGEON_MODELSPECS_DIR:-/app/modelspecs}
+      PIGEON_DB_PATH: ${PIGEON_DB_PATH:-/var/lib/pigeon/pigeon.db}
+      # Optional. In development, unset falls back to settings.py's dev-token.
+      # For production set a strong map via shell or PIGEON_TOKENS_FILE secret.
+      PIGEON_TOKENS: ${PIGEON_TOKENS:-}
+      PIGEON_TOKENS_FILE: ${PIGEON_TOKENS_FILE:-}
+      PIGEON_MEDIA_MAX_BYTES: ${PIGEON_MEDIA_MAX_BYTES:-10000000}
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - pigeon-data:/var/lib/pigeon
+      - ./modelspecs:/app/modelspecs:ro
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  pigeon-data:

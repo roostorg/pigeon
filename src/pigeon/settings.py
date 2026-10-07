@@ -64,11 +64,20 @@ class Settings:
     def from_env() -> "Settings":
         environment = os.environ.get("PIGEON_ENV", "production")
         raw_tokens = os.environ.get("PIGEON_TOKENS")
+        tokens_file = os.environ.get("PIGEON_TOKENS_FILE")
         if raw_tokens:
             try:
                 tokens = json.loads(raw_tokens)
             except json.JSONDecodeError as exc:
                 raise ValueError("PIGEON_TOKENS is not valid JSON") from exc
+        elif tokens_file:
+            try:
+                raw_file_tokens = Path(tokens_file).read_text(encoding="utf-8")
+                tokens = json.loads(raw_file_tokens)
+            except OSError as exc:
+                raise ValueError("PIGEON_TOKENS_FILE could not be read") from exc
+            except json.JSONDecodeError as exc:
+                raise ValueError("PIGEON_TOKENS_FILE is not valid JSON") from exc
         elif environment == "production":
             raise ValueError("PIGEON_TOKENS must be set when PIGEON_ENV=production")
         else:
