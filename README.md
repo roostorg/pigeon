@@ -140,12 +140,16 @@ path lands.
 - `src/pigeon/api.py` - the HTTP endpoints
 - `modelspecs/` - example model specs (`shieldgemma-2b` classifier, `shieldstral`/`cope-b` BYOP)
 
-## Known gaps (for the eng team)
+## Future work
 
-- Image/multimodal input on BYOP models returns 422; the vision path (Shieldstral is
-  multimodal) is not wired yet.
+- **Multimodal BYOP (images):** Some policy models (e.g. Shieldstral) can score
+  images as well as text. Specs may declare `image` in `input_types`, and
+  classify accepts `mediaUrl`, but the BYOP/chat path still returns **422** for
+  images. The live provider will only download up to `PIGEON_MEDIA_MAX_BYTES`
+  (default 10000000). Wire vision through providers (and the Coop plugin’s
+  eligible inputs) before advertising image signals. Until then, text/`STRING` only.
 - Response caching (one model call serving every label) is not yet ported from Coop.
 - `chat-harmony` format is declared but not yet implemented.
-- Auth is a static token->org map; wire to real per-org credentials.
+- Auth is a static token→org map; wire to real per-org credentials.
 - `local` provider runs one model instance sequentially; no batching or concurrency control.
 - `live` provider calls LiteLLM directly; a LiteLLM-proxy adapter is a likely next step.
