@@ -54,6 +54,49 @@ def test_classify_classifier(client, auth):
     assert scores["harassment"] > 0.5
 
 
+def test_classify_thread_context_is_flattened_into_classifier_text(client, auth):
+    resp = client.post(
+        "/v1/classify",
+        headers=auth,
+        json={
+            "model": "shieldgemma-2b",
+            "input": {
+                "text": "hello",
+                "context": {
+                    "thread": {
+                        "messages": [
+                            {"role": "user", "text": "this is a threat"},
+                            {"role": "assistant", "text": "hello"},
+                        ]
+                    }
+                },
+            },
+        },
+    )
+    assert resp.status_code == 200
+    scores = {result["label"]: result["score"] for result in resp.json()["results"]}
+    assert scores["harassment"] > 0.5
+
+
+def test_classify_rejects_oversized_thread_context(client, auth):
+    resp = client.post(
+        "/v1/classify",
+        headers=auth,
+        json={
+            "model": "shieldgemma-2b",
+            "input": {
+                "text": "hello",
+                "context": {
+                    "thread": {
+                        "messages": [{"text": "message"}] * 101,
+                    }
+                },
+            },
+        },
+    )
+    assert resp.status_code == 422
+
+
 def test_classify_unknown_model_404(client, auth):
     resp = client.post(
         "/v1/classify",

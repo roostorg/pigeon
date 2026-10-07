@@ -102,6 +102,7 @@ def build_router(
                 policy=req.policy,
                 registry=registry,
                 provider=provider,
+                context=req.input.context,
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc))

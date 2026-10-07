@@ -12,7 +12,25 @@ from .parsing import (
 )
 from .providers.base import ProviderClient
 from .registry import Registry
-from .schemas import ClassifyResult
+from .schemas import ClassifyContext, ClassifyResult
+
+
+def _merge_thread_context(
+    text: Optional[str], context: Optional[ClassifyContext]
+) -> Optional[str]:
+    if (
+        text is None
+        or context is None
+        or context.thread is None
+        or not context.thread.messages
+    ):
+        return text
+
+    thread = "\n".join(
+        f"{message.role}: {message.text}" if message.role else message.text
+        for message in context.thread.messages
+    )
+    return f"{thread}\n{text}"
 
 
 def build_prompt(mf: ModelSpec, text: Optional[str], policy: Optional[str]) -> list[dict]:
@@ -48,11 +66,13 @@ async def classify(
     policy: Optional[str],
     registry: Registry,
     provider: ProviderClient,
+    context: Optional[ClassifyContext] = None,
 ) -> tuple[str, list[ClassifyResult]]:
     """Resolve a model reference and return (resolved_version, normalized results)."""
     resolved = registry.resolve(org_id, model_ref)
     mf = resolved.modelspec
     effective_policy = resolved.bound_policy if resolved.bound_policy is not None else policy
+    text = _merge_thread_context(text, context)
 
     if mf.format == "classifier":
         raw = await provider.run_classifier(mf, text=text, media_url=media_url)
