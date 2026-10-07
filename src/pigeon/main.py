@@ -6,7 +6,6 @@ from fastapi import FastAPI
 
 from .api import build_router
 from .auth import make_auth
-from .modelspecs import load_modelspecs
 from .providers.base import ProviderClient
 from .providers.mock import MockProvider
 from .registry import Registry
@@ -28,9 +27,14 @@ def _make_provider(settings: Settings) -> ProviderClient:
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or Settings.from_env()
-    modelspecs = load_modelspecs(settings.modelspecs_dir)
-    store = Store(settings.db_path)
-    registry = Registry(modelspecs, store)
+    store = Store(
+        settings.db_path,
+        seed_dir=settings.modelspecs_dir,
+        seed=True,
+    )
+    if settings.seed_modelspecs:
+        store.seed_from_directory(settings.modelspecs_dir)
+    registry = Registry(store)
     provider = _make_provider(settings)
     get_org = make_auth(settings)
 

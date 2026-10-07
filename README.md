@@ -61,6 +61,10 @@ uv run --env-file .env pigeon # serves on http://127.0.0.1:8900
 Nothing loads `.env` automatically, so pass `--env-file` (or export the variables yourself).
 The example file sets `PIGEON_ENV=development`; without it Pigeon runs in production mode.
 
+### Model spec registry and database
+
+SQLite is the runtime source of truth for model specs. On an empty database, YAML files in `PIGEON_MODELSPECS_DIR` are imported once. Set `PIGEON_SEED_MODELSPECS=1` to import only missing YAML versions later; existing `(name, version)` rows are immutable and are never overwritten. `POST /v1/modelspecs` and `POST /v1/modelspecs/import` register additional versions, while `POST /v1/modelspecs/{name}/enable` pins an org to a version and may override its endpoint. Org enablement lives in `org_model_bindings`.
+
 `PIGEON_ENV` defaults to `production`. In production Pigeon refuses to start unless
 `PIGEON_TOKENS` is set, rejects the default `dev-token`, and requires every token to be at
 least 32 characters (`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`). Tokens
