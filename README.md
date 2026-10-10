@@ -65,10 +65,22 @@ The example file sets `PIGEON_ENV=development`; without it Pigeon runs in produc
 
 SQLite is the runtime source of truth for model specs. On an empty database, YAML files in `PIGEON_MODELSPECS_DIR` are imported once. Set `PIGEON_SEED_MODELSPECS=1` to import only missing YAML versions later; existing `(name, version)` rows are immutable and are never overwritten. `POST /v1/modelspecs` and `POST /v1/modelspecs/import` register additional versions, while `POST /v1/modelspecs/{name}/enable` pins an org to a version and may override its endpoint. Org enablement lives in `org_model_bindings`.
 
-`PIGEON_ENV` defaults to `production`. In production Pigeon refuses to start unless
-`PIGEON_TOKENS` is set, rejects the default `dev-token`, and requires every token to be at
-least 32 characters (`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`). Tokens
-containing whitespace are rejected in every environment.
+`PIGEON_ENV` defaults to `production`. In production Pigeon requires
+`PIGEON_MASTER_TOKEN` and `PIGEON_TOKEN_PEPPER`; use the master token only with the admin
+organization/token APIs. `PIGEON_TOKENS` (or `PIGEON_TOKENS_FILE`) is an optional bootstrap
+map imported into an empty database; bearer token authentication thereafter uses SQLite
+hashes. Development defaults to `dev-master-token` and seeds `dev-token` for `dev-org`.
+
+Create an organization and token with the master token:
+
+```bash
+curl -X POST localhost:8900/v1/admin/orgs \
+  -H "Authorization: Bearer $PIGEON_MASTER_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"id":"acme","displayName":"Acme"}'
+curl -X POST localhost:8900/v1/admin/orgs/acme/tokens \
+  -H "Authorization: Bearer $PIGEON_MASTER_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"name":"coop-prod"}'
+```
 
 ### Docker
 
@@ -76,31 +88,25 @@ Start the development service (mock provider). The host port defaults to
 **127.0.0.1:8900** (not all interfaces):
 
 ```bash
+cp .env.example .env   # if you have not already
 docker compose up --build
 ```
 
-Override publish address/port or runtime settings via the shell (compose uses
-`${VAR:-default}` interpolation, so these actually override):
+Compose loads app settings from `.env`. It only overrides three values inside the
+container (`PIGEON_HOST=0.0.0.0`, modelspecs dir, and the SQLite path on the
+data volume) so a native-oriented `.env` still works. Change provider, tokens,
+pepper, etc. in `.env`, not in `compose.yaml`.
+
+Publish address/port are compose-level (not app env):
 
 ```bash
 PIGEON_PUBLISH_PORT=8901 docker compose up --build
-PIGEON_ENV=production PIGEON_PROVIDER=live PIGEON_TOKENS='{"…":"org"}' docker compose up --build
 ```
 
 The compose setup stores SQLite in the `pigeon-data` volume, mounts `./modelspecs`
 read-only, runs as non-root with a read-only root filesystem (`cap_drop: ALL`,
 `no-new-privileges`), and listens on `0.0.0.0` *inside* the container. Native
-runs still default to `127.0.0.1`.
-
-**Hardening when you deploy this same compose file (no separate prod file):**
-
-- Set `PIGEON_ENV=production` and supply strong tokens via `PIGEON_TOKENS` or a
-  mounted `PIGEON_TOKENS_FILE` (Docker secret). Do not commit real secrets.
-- Prefer `PIGEON_PROVIDER=live` and real endpoints; keep `mock` for local only.
-- Keep the default `PIGEON_PUBLISH_ADDR=127.0.0.1`, or put TLS / a reverse proxy
-  in front if you publish more widely.
-- Keep modelspecs read-only; the database volume is the runtime source of truth
-  after the first seed.
+runs still use `PIGEON_HOST` from `.env` (default `127.0.0.1`).
 
 Try it (dev token from `.env.example`):
 
