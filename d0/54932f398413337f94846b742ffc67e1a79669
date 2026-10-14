@@ -1,0 +1,74 @@
+.gitignore
+  s_39e447bead5abc::t_c4b452953d4cf9 9-11
+integrations/coop-pigeon/README.md
+  s_39e447bead5abc::t_5b19b05aae6e7f 188-192
+  s_39e447bead5abc::t_2a724c4c574eaa 149-156
+  s_39e447bead5abc::t_8d61bc6213b62b 1
+  s_39e447bead5abc::t_bb646367ec8a83 2-148,157-187,193-206
+.github/workflows/publish-coop-integration.yaml
+  s_39e447bead5abc::t_52aa81e849cbc1 1-6,8-18,20-26,28-31,33-45
+  s_39e447bead5abc::t_cb66d564dbb918 27
+  s_39e447bead5abc::t_2cddd0b5b33b8d 7,19,32
+integrations/README.md
+  s_39e447bead5abc::t_5a448176b9bf77 7,11
+  s_39e447bead5abc::t_90342c7bd49339 1-6,8-10,12-13
+README.md
+  s_39e447bead5abc::t_e780ce286bb00e 29-36
+integrations/coop-pigeon/package.json
+  s_39e447bead5abc::t_be7580ea587bcf 2-34
+  s_39e447bead5abc::t_1bb106d057b665 1,35-46
+integrations/coop-pigeon/.gitignore
+  s_39e447bead5abc::t_e989db6480b9a7 1-4
+integrations/coop-pigeon/mock-server/fixtures.json
+  s_39e447bead5abc::t_4d2f2df890784b 1-37
+integrations/coop-pigeon/mock-server/server.mjs
+  s_39e447bead5abc::t_5b16612358dca7 1-221
+integrations/coop-pigeon/package-lock.json
+  s_39e447bead5abc::t_859df7979acf2d 1-101
+integrations/coop-pigeon/src/catalog.ts
+  s_39e447bead5abc::t_124616490216ad 1-50
+integrations/coop-pigeon/src/client.ts
+  s_39e447bead5abc::t_b3835a65761c00 1-264
+integrations/coop-pigeon/src/config.ts
+  s_39e447bead5abc::t_76283e5a3845aa 1-145
+integrations/coop-pigeon/src/constants.ts
+  s_39e447bead5abc::t_203fe33df202c6 1-23
+integrations/coop-pigeon/src/errors.ts
+  s_39e447bead5abc::t_0d43197ecb79bc 1-37
+integrations/coop-pigeon/src/index.ts
+  s_39e447bead5abc::t_8a82dcfe8bd5cb 1-108
+integrations/coop-pigeon/src/manifest.ts
+  s_39e447bead5abc::t_ae80d5970a50a9 1-72
+integrations/coop-pigeon/src/signal.ts
+  s_39e447bead5abc::t_c87e28364d8b20 1-137
+integrations/coop-pigeon/src/thread.ts
+  s_39e447bead5abc::t_a9f75e34dc1829 1-76
+integrations/coop-pigeon/test/client.test.ts
+  s_39e447bead5abc::t_be8e8c6d31fc8b 1-151
+integrations/coop-pigeon/test/config.test.ts
+  s_39e447bead5abc::t_d556c69d8a0b01 1-93
+integrations/coop-pigeon/test/mock-server.test.ts
+  s_39e447bead5abc::t_f0719e15551637 1-88
+integrations/coop-pigeon/test/plugin.test.ts
+  s_39e447bead5abc::t_8784c86e647390 1-585
+integrations/coop-pigeon/tsconfig.json
+  s_39e447bead5abc::t_80475b34f932ed 1-19
+integrations/coop-pigeon/tsconfig.test.json
+  s_39e447bead5abc::t_d9efe7c71a3f16 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d054932f398413337f94846b742ffc67e1a79669",
+  "prompts": {},
+  "sessions": {
+    "s_39e447bead5abc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7d7b5b93-4c28-4414-989b-2a5ca8c2f865",
+        "model": "default"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
