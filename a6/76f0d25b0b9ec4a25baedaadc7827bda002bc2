@@ -1,0 +1,51 @@
+src/pigeon/store.py
+  s_41c3c028f78796::t_584ca1c4f43951 251-252
+  s_41c3c028f78796::t_d2bdb44d81b14d 295-296,298-299
+  s_41c3c028f78796::t_6484e2614ba187 77-99,107-132,134,167-178
+  s_41c3c028f78796::t_03a317918d1e48 292,294,297,300-303,306-308,313-317,322-331,340-342,345-347,351-353,357-359,362-364,368-370,378-379,409-410
+  s_41c3c028f78796::t_123867eb7d4ce6 18-19,55-61,74,100-106,133,135-166,187
+  s_9fec762e193d5b::t_3a866e431c68a1 179
+src/pigeon/api.py
+  s_41c3c028f78796::t_e5165330bb31f4 85,94
+  s_41c3c028f78796::t_b49b6ee946c759 138
+  s_41c3c028f78796::t_b9adf6a0a9a018 139
+  s_41c3c028f78796::t_6886a5ca3d2d0b 54
+tests/test_orgs_tokens.py
+  s_41c3c028f78796::t_33efdbd65d6d9e 210-264
+src/pigeon/main.py
+  s_41c3c028f78796::t_a00de2ca603d53 39-41
+tests/test_store.py
+  s_41c3c028f78796::t_36bcd57b65c5fe 95-147
+  s_41c3c028f78796::t_39174ad86555ec 12,14-15,17-18,20,25-43,46-47,49,56,66,68-70,75-77,86-87,89,92,152-156
+  s_9fec762e193d5b::t_a901c05c66c694 93-94
+README.md
+  s_41c3c028f78796::t_6d7b7aefbb4b16 66-71
+tests/test_registry.py
+  s_41c3c028f78796::t_e928c320c196ad 13-16,57-76
+src/pigeon/registry.py
+  s_41c3c028f78796::t_7a1499e47bbb61 23,30-31,33,44,49,81,86,100-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a676f0d25b0b9ec4a25baedaadc7827bda002bc2",
+  "prompts": {},
+  "sessions": {
+    "s_41c3c028f78796": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1a9b91da-09bf-46bc-9004-9e26a3b5ba87",
+        "model": "default"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    },
+    "s_9fec762e193d5b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b0e09479-679d-4cb5-a6e9-495a82f0dd36",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
