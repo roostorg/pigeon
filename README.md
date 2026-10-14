@@ -63,7 +63,12 @@ The example file sets `PIGEON_ENV=development`; without it Pigeon runs in produc
 
 ### Model spec registry and database
 
-SQLite is the runtime source of truth for model specs. On an empty database, YAML files in `PIGEON_MODELSPECS_DIR` are imported once. Set `PIGEON_SEED_MODELSPECS=1` to import only missing YAML versions later; existing `(name, version)` rows are immutable and are never overwritten. `POST /v1/modelspecs` and `POST /v1/modelspecs/import` register additional versions, while `POST /v1/modelspecs/{name}/enable` pins an org to a version and may override its endpoint. Org enablement lives in `org_model_bindings`.
+SQLite is the runtime source of truth for model specs, and the catalog is **per org**.
+YAML files in `PIGEON_MODELSPECS_DIR` are imported into an org the first time it needs a
+catalog (org create / bootstrap). Set `PIGEON_SEED_MODELSPECS=1` to import any missing YAML
+versions into each existing org later; existing `(org, name, version)` rows are immutable.
+`POST /v1/modelspecs` and `POST /v1/modelspecs/import` register into the caller's org only.
+`POST /v1/modelspecs/{name}/enable` pins that org to a version and may override its endpoint.
 
 `PIGEON_ENV` defaults to `production`. In production Pigeon requires
 `PIGEON_MASTER_TOKEN` and `PIGEON_TOKEN_PEPPER`; use the master token only with the admin

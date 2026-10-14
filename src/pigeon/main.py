@@ -32,12 +32,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         seed_dir=settings.modelspecs_dir,
         seed=True,
     )
-    if settings.seed_modelspecs:
-        store.seed_from_directory(settings.modelspecs_dir)
     registry = Registry(store)
     provider = _make_provider(settings)
     if not store.list_api_tokens() and settings.bootstrap_tokens:
         store.seed_tokens_from_map(settings.bootstrap_tokens, settings.token_pepper)
+    if settings.seed_modelspecs:
+        for org in store.list_orgs():
+            store.seed_from_directory(settings.modelspecs_dir, org["id"])
     get_auth = make_auth(settings, store)
 
     app = FastAPI(title="Pigeon", version="0.1.0")
