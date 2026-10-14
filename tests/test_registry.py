@@ -10,7 +10,10 @@ from .conftest import MODELSPECS_DIR
 
 @pytest.fixture
 def registry(tmp_path) -> Registry:
-    return Registry(Store(tmp_path / "pigeon.db", seed_dir=MODELSPECS_DIR))
+    store = Store(tmp_path / "pigeon.db", seed_dir=MODELSPECS_DIR)
+    store.create_org("org-a", "Org A")
+    store.create_org("org-b", "Org B")
+    return Registry(store)
 
 
 def test_list_signals_exposes_classifiers_not_byop_bases(registry: Registry):
@@ -51,3 +54,23 @@ def test_resolve_overlays_org_endpoint(registry: Registry):
     assert resolved.modelspec.model.endpoint == "https://org-a.example/infer"
     other = registry.resolve("org-b", "shieldgemma-2b")
     assert other.modelspec.model.endpoint != "https://org-a.example/infer"
+
+
+def test_register_stays_in_caller_org(registry: Registry):
+    from pigeon.modelspecs import ModelSpec
+
+    spec = ModelSpec.model_validate(
+        {
+            "name": "only-a",
+            "version": "1",
+            "model": {"id": "x/y", "runtime": "endpoint"},
+            "format": "classifier",
+            "labels": ["x"],
+        }
+    )
+    registry.store.register_modelspec("org-a", spec)
+    registry.store.enable("org-a", "only-a", "1")
+    ids_a = {item.id for item in registry.list_signals("org-a")}
+    ids_b = {item.id for item in registry.list_signals("org-b")}
+    assert "only-a" in ids_a
+    assert "only-a" not in ids_b

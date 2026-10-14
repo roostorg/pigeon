@@ -20,16 +20,17 @@ def _titlecase(label: str) -> str:
 
 
 class Registry:
-    """Turns DB-backed modelspecs + per-org policies into the signal list a consumer sees,
+    """Turns per-org modelspecs + policies into the signal list a consumer sees,
     and resolves a model reference ("name" or "name@version") to something callable."""
 
     def __init__(self, store: Store):
         self.store = store
 
     def ensure_defaults(self, org_id: str) -> None:
-        """Convenience seed: bind every spec only when the org has no bindings."""
+        """Seed the org catalog if empty, then bind every spec when unbound."""
+        self.store.ensure_org_catalog(org_id)
         if not self.store.enabled_bindings(org_id):
-            for row in self.store.modelspec_versions():
+            for row in self.store.modelspec_versions(org_id):
                 self.store.enable(org_id, row["name"], row["version"])
 
     def list_signals(self, org_id: str) -> list[ModelSpecSummary]:
@@ -40,12 +41,12 @@ class Registry:
         # bound policies (below); completion models are Osprey-only and not signals.
         for binding in self.store.enabled_bindings(org_id):
             name = binding["model_name"]
-            mf = self.store.get_modelspec(name, binding["spec_version"])
+            mf = self.store.get_modelspec(org_id, name, binding["spec_version"])
             if mf is not None and mf.kind == "classifier":
                 summaries.append(self._classifier_summary(mf))
 
         for pol in self.store.latest_policies(org_id):
-            base = self.store.get_modelspec(pol["base"], pol.get("base_version"))
+            base = self.store.get_modelspec(org_id, pol["base"], pol.get("base_version"))
             if base is None:
                 continue
             binding = self.store.get_binding(org_id, pol["base"])
@@ -77,11 +78,12 @@ class Registry:
         )
 
     def resolve(self, org_id: str, model_ref: str) -> Resolved:
+        self.store.ensure_org_catalog(org_id)
         name, _, version = model_ref.partition("@")
 
         pol = self.store.get_policy(org_id, name, int(version) if version.isdigit() else None)
         if pol is not None:
-            base = self.store.get_modelspec(pol["base"], pol.get("base_version"))
+            base = self.store.get_modelspec(org_id, pol["base"], pol.get("base_version"))
             if base is None:
                 raise KeyError(
                     f"base model spec '{pol['base']}' not found for policy '{name}'"
@@ -95,7 +97,9 @@ class Registry:
             )
 
         binding = self.store.get_binding(org_id, name)
-        mf = self.store.get_modelspec(name, version or (binding or {}).get("spec_version"))
+        mf = self.store.get_modelspec(
+            org_id, name, version or (binding or {}).get("spec_version")
+        )
         if mf is None:
             raise KeyError(f"unknown model '{name}'")
         if version and mf.version != version:
