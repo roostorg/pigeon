@@ -1,0 +1,46 @@
+{
+  "name": "@roostorg/pigeon-coop",
+  "version": "0.1.0",
+  "description": "Coop integration that scores content with an organization's Pigeon policies.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "mock-server",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:test": "tsc -p tsconfig.test.json",
+    "test": "npm run build:test && node --test \"build-test/test/**/*.test.js\"",
+    "mock-server": "node mock-server/server.mjs",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/roostorg/pigeon",
+    "directory": "integrations/pigeon-coop"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@roostorg/coop-types": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.0"
+  }
+}
