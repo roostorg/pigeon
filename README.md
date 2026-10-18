@@ -29,8 +29,8 @@ inference provider, without Coop or Osprey.
 ### Coop integration package
 
 The Coop plugin lives next to the service at
-[`integrations/coop-pigeon`](./integrations/coop-pigeon)
-and publishes as [`@roostorg/coop-pigeon`](https://www.npmjs.com/package/@roostorg/coop-pigeon)
+[`integrations/pigeon-coop`](./integrations/pigeon-coop)
+and publishes as [`@roostorg/pigeon-coop`](https://www.npmjs.com/package/@roostorg/pigeon-coop)
 when that directory changes (see `.github/workflows/publish-coop-integration.yaml`).
 It targets `@roostorg/coop-types` `^3.0.0`.
 

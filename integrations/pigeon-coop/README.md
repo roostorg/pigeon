@@ -1,4 +1,4 @@
-# @roostorg/coop-pigeon
+# @roostorg/pigeon-coop
 
 A [Coop](https://github.com/roostorg/coop) integration that scores content with
 an organization's Pigeon policies. Lives in this repo next to the Pigeon
@@ -146,14 +146,14 @@ curl -s -X POST localhost:8900/__mock/reset
    {
      "integrations": [
        {
-         "package": "../../pigeon/integrations/coop-pigeon",
+         "package": "../../pigeon/integrations/pigeon-coop",
          "enabled": true
        }
      ]
    }
    ```
 
-   Or after publish: `"package": "@roostorg/coop-pigeon"`.
+   Or after publish: `"package": "@roostorg/pigeon-coop"`.
 
 3. Start the mock server (or a real Pigeon on port 8900), then start Coop from `server/`:
 
@@ -185,11 +185,11 @@ Depends on `@roostorg/coop-types` `^3.0.0` (published on npm).
 
 ## Publishing
 
-CI publishes to npm when `integrations/coop-pigeon/**` changes on
+CI publishes to npm when `integrations/pigeon-coop/**` changes on
 `main` or `prototype` (see `.github/workflows/publish-coop-integration.yaml`).
 Bump `version` in `package.json` to release; if that version already exists on
 npm, the workflow skips. npm must have OIDC trusted publishing configured for
-`@roostorg/coop-pigeon` (same pattern as Coop's `@roostorg/coop-types`).
+`@roostorg/pigeon-coop` (same pattern as Coop's `@roostorg/coop-types`).
 
 ## Known Pigeon API gaps
 

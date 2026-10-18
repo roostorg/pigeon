@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, prototype]
     paths:
-      - 'integrations/coop-pigeon/**'
+      - 'integrations/pigeon-coop/**'
   workflow_dispatch:
 
 permissions:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: integrations/coop-pigeon
+        working-directory: integrations/pigeon-coop
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -29,7 +29,7 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Check and publish @roostorg/coop-pigeon
+      - name: Check and publish @roostorg/pigeon-coop
         run: |
           PKG_NAME=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")

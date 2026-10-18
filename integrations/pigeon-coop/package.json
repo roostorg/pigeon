@@ -1,5 +1,5 @@
 {
-  "name": "@roostorg/coop-pigeon",
+  "name": "@roostorg/pigeon-coop",
   "version": "0.1.0",
   "description": "Coop integration that scores content with an organization's Pigeon policies.",
   "license": "Apache-2.0",
@@ -31,7 +31,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/roostorg/pigeon",
-    "directory": "integrations/coop-pigeon"
+    "directory": "integrations/pigeon-coop"
   },
   "publishConfig": {
     "access": "public"
