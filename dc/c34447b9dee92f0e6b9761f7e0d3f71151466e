@@ -1,0 +1,31 @@
+README.md
+  s_39e447bead5abc::t_6d78c4078453fe 32-33
+integrations/README.md
+  s_39e447bead5abc::t_891e13a562fa56 7,11
+integrations/pigeon-coop/package.json
+  s_39e447bead5abc::t_820262f92b5577 2-34
+integrations/pigeon-coop/README.md
+  s_39e447bead5abc::t_0037d7283bd66d 149-156
+  s_39e447bead5abc::t_c5817a50558546 188-192
+  s_39e447bead5abc::t_d8db3a01691c2e 1
+.github/workflows/publish-coop-integration.yaml
+  s_39e447bead5abc::t_a39bfd4a28ff66 7,19,32
+integrations/pigeon-coop/package-lock.json
+  s_39e447bead5abc::t_139517aceb4d71 2,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dcc34447b9dee92f0e6b9761f7e0d3f71151466e",
+  "prompts": {},
+  "sessions": {
+    "s_39e447bead5abc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7d7b5b93-4c28-4414-989b-2a5ca8c2f865",
+        "model": "default"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
