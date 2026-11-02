@@ -1,0 +1,45 @@
+name: Publish Coop Integration
+
+on:
+  push:
+    branches: [main, prototype]
+    paths:
+      - 'integrations/pigeon-coop/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write # Required for OIDC trusted publishing to npm
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/pigeon-coop
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Check and publish @roostorg/pigeon-coop
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Checking $PKG_NAME@$VERSION..."
+
+          if npm view "$PKG_NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "Version $VERSION of $PKG_NAME already exists on npm - skipping"
+          else
+            echo "Publishing $PKG_NAME@$VERSION..."
+            npm ci
+            npm test
+            npm publish --access public
+          fi

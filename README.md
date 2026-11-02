@@ -26,6 +26,14 @@ provider credentials, and the response-parsing logic.
 It also runs standalone, as a way to manage and send requests to open weights across any
 inference provider, without Coop or Osprey.
 
+### Coop integration package
+
+The Coop plugin lives next to the service at
+[`integrations/pigeon-coop`](./integrations/pigeon-coop)
+and publishes as [`@roostorg/pigeon-coop`](https://www.npmjs.com/package/@roostorg/pigeon-coop)
+when that directory changes (see `.github/workflows/publish-coop-integration.yaml`).
+It targets `@roostorg/coop-types` `^3.0.0`.
+
 > Status: prototype. The contracts and flows are working end to end against a mock provider;
 > the eng team takes it forward from here (hardening, real inference, persistence, UI).
 

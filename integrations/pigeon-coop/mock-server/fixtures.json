@@ -1,0 +1,37 @@
+{
+  "tokens": {
+    "test-api-key": "demo-org",
+    "other-org-key": "other-org"
+  },
+  "orgs": {
+    "demo-org": {
+      "policies": [
+        {
+          "id": "harassment",
+          "version": "1",
+          "base": "cope-b",
+          "display": "Harassment",
+          "keywords": ["idiot", "loser"],
+          "mediumKeywords": ["shut up"]
+        },
+        {
+          "id": "toxicity",
+          "version": "1",
+          "base": "shieldstral",
+          "display": "Toxicity",
+          "keywords": ["toxic"]
+        },
+        {
+          "id": "spam",
+          "version": "1",
+          "base": "cope-b",
+          "display": "Spam",
+          "keywords": ["buy now", "free money"]
+        }
+      ]
+    },
+    "other-org": {
+      "policies": []
+    }
+  }
+}
