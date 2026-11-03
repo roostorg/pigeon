@@ -17,7 +17,9 @@ def settings(tmp_path) -> Settings:
         provider="mock",
         modelspecs_dir=MODELSPECS_DIR,
         db_path=tmp_path / "test.db",
-        tokens={"dev-token": "dev-org"},
+        master_token="dev-master-token",
+        token_pepper="test-pepper",
+        bootstrap_tokens={"dev-token": "dev-org"},
         environment="development",
     )
 
