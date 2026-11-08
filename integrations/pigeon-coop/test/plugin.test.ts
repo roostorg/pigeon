@@ -166,6 +166,25 @@ describe('manifest and descriptors', () => {
     assert.equal(manifest.version, pkg.version);
   });
 
+  it('ships the logo files the manifest points at', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const root = [join(here, '..'), join(here, '..', '..')].find((dir) => {
+      try {
+        readFileSync(join(dir, 'package.json'));
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    assert.ok(root, 'package root not found');
+    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { files: string[] };
+    for (const logo of [manifest.logoPath, manifest.logoWithBackgroundPath]) {
+      assert.ok(logo, 'logo path missing');
+      assert.ok(pkg.files.includes(logo.split('/')[0]!), `${logo} is not in package.json files`);
+      assert.match(readFileSync(join(root, logo), 'utf8'), /^<\?xml[\s\S]*<svg[\s\S]*<\/svg>\s*$/);
+    }
+  });
+
   it('has a valid manifest and model card', () => {
     assert.match(manifest.id, /^[A-Z][A-Z0-9_]*$/);
     assert.equal(manifest.requiresConfig, true);

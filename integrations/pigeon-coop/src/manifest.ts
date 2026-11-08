@@ -29,6 +29,8 @@ export const manifest: IntegrationManifest = {
   version: PACKAGE_VERSION,
   description: 'Scores text with organization-authored Pigeon policies.',
   requiresConfig: true,
+  logoPath: 'assets/roost-mark-charcoal.svg',
+  logoWithBackgroundPath: 'assets/roost-badge-charcoal.svg',
   configurationFields: [
     {
       key: 'apiKey',
