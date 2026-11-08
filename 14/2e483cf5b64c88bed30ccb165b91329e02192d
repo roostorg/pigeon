@@ -1,0 +1,25 @@
+integrations/pigeon-coop/test/plugin.test.ts
+  s_eece7659d25d07::t_dff80bfb7ffeee 148-154,156-158,162-163
+integrations/pigeon-coop/package.json
+  s_eece7659d25d07::t_0ba82b09fcec5e 13-14
+integrations/pigeon-coop/src/manifest.ts
+  s_eece7659d25d07::t_bae9a469d1fe2f 1-2,5-9
+integrations/README.md
+  s_eece7659d25d07::t_54f1bdba31dd8d 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "142e483cf5b64c88bed30ccb165b91329e02192d",
+  "prompts": {},
+  "sessions": {
+    "s_eece7659d25d07": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e1e700f2-9c19-41a9-86d9-0cd2ec2c09bd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
