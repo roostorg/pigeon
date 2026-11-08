@@ -1,6 +1,6 @@
 {
   "name": "@roostorg/pigeon-coop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Coop integration that scores content with an organization's Pigeon policies.",
   "license": "Apache-2.0",
   "type": "module",
@@ -13,6 +13,7 @@
     }
   },
   "files": [
+    "assets",
     "dist",
     "mock-server",
     "README.md"
