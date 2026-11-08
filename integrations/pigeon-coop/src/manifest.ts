@@ -1,6 +1,12 @@
+import { createRequire } from 'node:module';
+
 import type { IntegrationManifest } from '@roostorg/coop-types';
 import { REQUIRED_MODEL_CARD_SECTION_IDS } from '@roostorg/coop-types';
-import { INTEGRATION_ID, PACKAGE_VERSION, SIGNAL_TYPE_ID } from './constants.js';
+import { INTEGRATION_ID, SIGNAL_TYPE_ID } from './constants.js';
+
+const { version: PACKAGE_VERSION } = createRequire(import.meta.url)(
+  '@roostorg/pigeon-coop/package.json',
+) as { version: string };
 
 const sectionTitles: Readonly<Record<string, string>> = {
   trainingData: 'Training Data',

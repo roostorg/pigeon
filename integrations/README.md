@@ -9,5 +9,5 @@ Packages that connect Pigeon to consumer tools.
 Publishing for the Coop package is handled by
 [`.github/workflows/publish-coop-integration.yaml`](../.github/workflows/publish-coop-integration.yaml)
 when files under `integrations/pigeon-coop/` change on `main` or
-`prototype`. Bump `package.json` `version` (and `PACKAGE_VERSION` in
-`src/constants.ts`) to cut a release.
+`prototype`. Bump `version` in `pigeon-coop/package.json` to cut a release; the
+plugin manifest reads it from there.

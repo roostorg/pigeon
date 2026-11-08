@@ -17,8 +17,6 @@ import plugin, {
   PigeonError,
   SIGNAL_TYPE_ID,
 } from '../src/index.js';
-import { PACKAGE_VERSION } from '../src/constants.js';
-
 const ENV = { PIGEON_ALLOWED_HOSTS: 'api.example.com' };
 const CREDENTIAL = {
   apiKey: 'test-api-key',
@@ -147,37 +145,22 @@ function checkDescriptor(signalTypeId: string, signal: PluginSignalDescriptor) {
   assert.equal(signal.integration, manifest.id);
 }
 
+// Tests run from build-test/test/, two levels below the package root.
+const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const PACKAGE_JSON = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf8')) as {
+  version: string;
+  files: string[];
+};
+
 describe('manifest and descriptors', () => {
-  it('keeps PACKAGE_VERSION aligned with package.json', () => {
-    // Test file lives at test/ (or build-test/test/); package.json is two levels up from build-test/test.
-    const here = dirname(fileURLToPath(import.meta.url));
-    const candidates = [join(here, '..', 'package.json'), join(here, '..', '..', 'package.json')];
-    const pkgPath = candidates.find((path) => {
-      try {
-        readFileSync(path);
-        return true;
-      } catch {
-        return false;
-      }
-    });
-    assert.ok(pkgPath, 'package.json not found');
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string };
-    assert.equal(PACKAGE_VERSION, pkg.version);
-    assert.equal(manifest.version, pkg.version);
+  it('reports the package.json version', () => {
+    assert.equal(manifest.version, PACKAGE_JSON.version);
+    assert.equal(manifest.modelCard?.version, PACKAGE_JSON.version);
   });
 
   it('ships the logo files the manifest points at', () => {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const root = [join(here, '..'), join(here, '..', '..')].find((dir) => {
-      try {
-        readFileSync(join(dir, 'package.json'));
-        return true;
-      } catch {
-        return false;
-      }
-    });
-    assert.ok(root, 'package root not found');
-    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { files: string[] };
+    const root = PACKAGE_ROOT;
+    const pkg = PACKAGE_JSON;
     for (const logo of [manifest.logoPath, manifest.logoWithBackgroundPath]) {
       assert.ok(logo, 'logo path missing');
       assert.ok(pkg.files.includes(logo.split('/')[0]!), `${logo} is not in package.json files`);

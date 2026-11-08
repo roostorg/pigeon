@@ -1,7 +1,5 @@
 export const INTEGRATION_ID = 'PIGEON';
 export const SIGNAL_TYPE_ID = 'PIGEON_POLICY_SCORE';
-/** Keep in sync with package.json `version` (asserted in tests). */
-export const PACKAGE_VERSION = '0.1.0';
 
 export const SIGNAL_ID_PATTERN = /^[A-Z][A-Z0-9_]{0,99}$/;
 
