@@ -4,6 +4,7 @@ import pytest
 
 from pigeon.settings import (
     DEFAULT_DEV_TOKEN,
+    DEFAULT_DEV_TOKEN_PEPPER,
     DEFAULT_MEDIA_MAX_BYTES,
     MIN_PRODUCTION_TOKEN_LENGTH,
     Settings,
@@ -12,6 +13,8 @@ from pigeon.settings import (
 _ENV_VARS = (
     "PIGEON_ENV",
     "PIGEON_TOKENS",
+    "PIGEON_MASTER_TOKEN",
+    "PIGEON_TOKEN_PEPPER",
     "PIGEON_PROVIDER",
     "PIGEON_MODELSPECS_DIR",
     "PIGEON_DB_PATH",
@@ -27,8 +30,8 @@ def clean_env(monkeypatch):
         monkeypatch.delenv(name, raising=False)
 
 
-def test_defaults_to_production_and_requires_tokens():
-    with pytest.raises(ValueError, match="PIGEON_TOKENS must be set"):
+def test_defaults_to_production_and_requires_master():
+    with pytest.raises(ValueError, match="PIGEON_MASTER_TOKEN"):
         Settings.from_env()
 
 
@@ -36,37 +39,62 @@ def test_development_defaults_to_dev_token(monkeypatch):
     monkeypatch.setenv("PIGEON_ENV", "development")
     settings = Settings.from_env()
     assert settings.environment == "development"
-    assert settings.tokens == {DEFAULT_DEV_TOKEN: "dev-org"}
+    assert settings.bootstrap_tokens == {DEFAULT_DEV_TOKEN: "dev-org"}
 
 
 def test_production_rejects_dev_token(monkeypatch):
+    monkeypatch.setenv("PIGEON_MASTER_TOKEN", "x" * 32)
+    monkeypatch.setenv("PIGEON_TOKEN_PEPPER", "pepper")
     monkeypatch.setenv("PIGEON_TOKENS", '{"dev-token": "dev-org"}')
     with pytest.raises(ValueError, match="not allowed"):
         Settings.from_env()
 
 
+def test_production_rejects_dev_token_pepper(monkeypatch):
+    monkeypatch.setenv("PIGEON_MASTER_TOKEN", "m" * 32)
+    monkeypatch.setenv("PIGEON_TOKEN_PEPPER", DEFAULT_DEV_TOKEN_PEPPER)
+    monkeypatch.setenv("PIGEON_TOKENS", f'{{"{FAKE_PROD_TOKEN}": "test-org"}}')
+    with pytest.raises(ValueError, match="PIGEON_TOKEN_PEPPER"):
+        Settings.from_env()
+
+
+def test_master_token_cannot_match_bootstrap_secret(monkeypatch):
+    shared = "m" * 32
+    monkeypatch.setenv("PIGEON_ENV", "development")
+    monkeypatch.setenv("PIGEON_MASTER_TOKEN", shared)
+    monkeypatch.setenv("PIGEON_TOKENS", f'{{"{shared}": "test-org"}}')
+    with pytest.raises(ValueError, match="must not match"):
+        Settings.from_env()
+
+
 def test_production_rejects_short_token(monkeypatch):
+    monkeypatch.setenv("PIGEON_MASTER_TOKEN", "x" * 32)
+    monkeypatch.setenv("PIGEON_TOKEN_PEPPER", "pepper")
     monkeypatch.setenv("PIGEON_TOKENS", '{"short-test-token": "test-org"}')
     with pytest.raises(ValueError, match="shorter than"):
         Settings.from_env()
 
 
 def test_production_accepts_strong_token(monkeypatch):
+    monkeypatch.setenv("PIGEON_MASTER_TOKEN", "m" * 32)
+    monkeypatch.setenv("PIGEON_TOKEN_PEPPER", "pepper")
     monkeypatch.setenv("PIGEON_TOKENS", f'{{"{FAKE_PROD_TOKEN}": "test-org"}}')
     settings = Settings.from_env()
     assert settings.environment == "production"
-    assert settings.tokens == {FAKE_PROD_TOKEN: "test-org"}
+    assert settings.bootstrap_tokens == {FAKE_PROD_TOKEN: "test-org"}
 
 
 def test_development_allows_short_token(monkeypatch):
     monkeypatch.setenv("PIGEON_ENV", "development")
     monkeypatch.setenv("PIGEON_TOKENS", '{"short": "test-org"}')
-    assert Settings.from_env().tokens == {"short": "test-org"}
+    assert Settings.from_env().bootstrap_tokens == {"short": "test-org"}
 
 
 def test_unknown_environment_rejected(monkeypatch):
     monkeypatch.setenv("PIGEON_ENV", "prod")
     monkeypatch.setenv("PIGEON_TOKENS", f'{{"{FAKE_PROD_TOKEN}": "test-org"}}')
+    monkeypatch.setenv("PIGEON_MASTER_TOKEN", "m" * 32)
+    monkeypatch.setenv("PIGEON_TOKEN_PEPPER", "pepper")
     with pytest.raises(ValueError, match="PIGEON_ENV must be one of"):
         Settings.from_env()
 

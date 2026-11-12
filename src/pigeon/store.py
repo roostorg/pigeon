@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 import time
 import json
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -14,15 +15,28 @@ SQLite keeps the prototype self-contained; swap for the eng team's datastore lat
 
 class Store:
     def __init__(self, path: Path, seed_dir: Optional[Path] = None, seed: bool = True):
+        self._seed_dir = seed_dir
+        self._seed = seed
         self._conn = sqlite3.connect(str(path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init()
-        if seed and seed_dir is not None and not self.modelspec_versions():
-            self.seed_from_directory(seed_dir)
 
     def _init(self) -> None:
         self._conn.executescript(
             """
+            CREATE TABLE IF NOT EXISTS orgs (
+                id TEXT PRIMARY KEY,
+                display_name TEXT NOT NULL,
+                created_at REAL NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS api_tokens (
+                id TEXT PRIMARY KEY,
+                org_id TEXT NOT NULL REFERENCES orgs(id),
+                name TEXT NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE,
+                created_at REAL NOT NULL,
+                revoked_at REAL
+            );
             CREATE TABLE IF NOT EXISTS policies (
                 org_id TEXT NOT NULL,
                 name TEXT NOT NULL,
@@ -38,9 +52,13 @@ class Store:
         self._conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS modelspec_versions (
-                name TEXT NOT NULL, version TEXT NOT NULL, spec_json TEXT NOT NULL,
-                source TEXT NOT NULL, created_at REAL NOT NULL,
-                PRIMARY KEY (name, version)
+                org_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                version TEXT NOT NULL,
+                spec_json TEXT NOT NULL,
+                source TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                PRIMARY KEY (org_id, name, version)
             );
             CREATE TABLE IF NOT EXISTS org_model_bindings (
                 org_id TEXT NOT NULL, model_name TEXT NOT NULL,
@@ -53,7 +71,193 @@ class Store:
         columns = {r["name"] for r in self._conn.execute("PRAGMA table_info(policies)")}
         if "base_version" not in columns:
             self._conn.execute("ALTER TABLE policies ADD COLUMN base_version TEXT")
+        self._migrate_modelspecs_org_scope()
         self._conn.commit()
+
+    def _has_table(self, name: str) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (name,),
+        ).fetchone()
+        return row is not None
+
+    def _create_scoped_modelspec_versions_table(self) -> None:
+        self._conn.execute("DROP TABLE IF EXISTS modelspec_versions")
+        self._conn.execute(
+            """
+            CREATE TABLE modelspec_versions (
+                org_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                version TEXT NOT NULL,
+                spec_json TEXT NOT NULL,
+                source TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                PRIMARY KEY (org_id, name, version)
+            )
+            """
+        )
+
+    def _migrate_modelspecs_org_scope(self) -> None:
+        """Copy a pre-org-scoped catalog into every existing org (prototype DBs)."""
+        cols = {
+            r["name"]
+            for r in self._conn.execute("PRAGMA table_info(modelspec_versions)")
+        }
+        if not cols or "org_id" in cols:
+            return
+        old_rows = self._conn.execute("SELECT * FROM modelspec_versions").fetchall()
+        if not old_rows:
+            self._create_scoped_modelspec_versions_table()
+            return
+
+        org_ids = [r["id"] for r in self._conn.execute("SELECT id FROM orgs").fetchall()]
+        if not org_ids:
+            self._conn.execute(
+                """
+                CREATE TABLE modelspec_versions_global_stash (
+                    name TEXT NOT NULL,
+                    version TEXT NOT NULL,
+                    spec_json TEXT NOT NULL,
+                    source TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    PRIMARY KEY (name, version)
+                )
+                """
+            )
+            self._conn.execute(
+                "INSERT INTO modelspec_versions_global_stash "
+                "(name, version, spec_json, source, created_at) "
+                "SELECT name, version, spec_json, source, created_at FROM modelspec_versions"
+            )
+            self._create_scoped_modelspec_versions_table()
+            return
+
+        self._conn.execute(
+            """
+            CREATE TABLE modelspec_versions_v2 (
+                org_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                version TEXT NOT NULL,
+                spec_json TEXT NOT NULL,
+                source TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                PRIMARY KEY (org_id, name, version)
+            )
+            """
+        )
+        for org_id in org_ids:
+            for row in old_rows:
+                self._conn.execute(
+                    "INSERT INTO modelspec_versions_v2 "
+                    "(org_id, name, version, spec_json, source, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        org_id,
+                        row["name"],
+                        row["version"],
+                        row["spec_json"],
+                        row["source"],
+                        row["created_at"],
+                    ),
+                )
+        self._conn.execute("DROP TABLE modelspec_versions")
+        self._conn.execute(
+            "ALTER TABLE modelspec_versions_v2 RENAME TO modelspec_versions"
+        )
+
+    def _materialize_global_stash_for_org(self, org_id: str) -> None:
+        if not self._has_table("modelspec_versions_global_stash"):
+            return
+        rows = self._conn.execute(
+            "SELECT * FROM modelspec_versions_global_stash"
+        ).fetchall()
+        for row in rows:
+            spec = ModelSpec.model_validate(json.loads(row["spec_json"]))
+            self.register_modelspec(
+                org_id, spec, source=row["source"], ignore_duplicate=True
+            )
+
+    def create_org(self, org_id: str, display_name: str) -> dict:
+        row = {"id": org_id, "display_name": display_name, "created_at": time.time()}
+        self._conn.execute(
+            "INSERT INTO orgs (id, display_name, created_at) VALUES (?, ?, ?)",
+            (row["id"], row["display_name"], row["created_at"]),
+        )
+        self._conn.commit()
+        self.ensure_org_catalog(org_id)
+        return row
+
+    def list_orgs(self) -> list[dict]:
+        rows = self._conn.execute("SELECT * FROM orgs ORDER BY id").fetchall()
+        return [dict(row) for row in rows]
+
+    def get_org(self, org_id: str) -> Optional[dict]:
+        row = self._conn.execute("SELECT * FROM orgs WHERE id = ?", (org_id,)).fetchone()
+        return dict(row) if row else None
+
+    def create_api_token(self, org_id: str, name: str, token_hash: str) -> dict:
+        row = {
+            "id": str(uuid.uuid4()),
+            "org_id": org_id,
+            "name": name,
+            "token_hash": token_hash,
+            "created_at": time.time(),
+            "revoked_at": None,
+        }
+        self._conn.execute(
+            "INSERT INTO api_tokens "
+            "(id, org_id, name, token_hash, created_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?)",
+            tuple(row.values()),
+        )
+        self._conn.commit()
+        return row
+
+    def list_api_tokens(self, org_id: Optional[str] = None) -> list[dict]:
+        if org_id is None:
+            rows = self._conn.execute(
+                "SELECT id, org_id, name, created_at, revoked_at FROM api_tokens "
+                "ORDER BY created_at, id"
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT id, org_id, name, created_at, revoked_at FROM api_tokens "
+                "WHERE org_id = ? ORDER BY created_at, id",
+                (org_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def revoke_api_token(self, org_id: str, token_id: str) -> bool:
+        cursor = self._conn.execute(
+            "UPDATE api_tokens SET revoked_at = ? "
+            "WHERE id = ? AND org_id = ? AND revoked_at IS NULL",
+            (time.time(), token_id, org_id),
+        )
+        self._conn.commit()
+        return cursor.rowcount > 0
+
+    def resolve_api_token(self, token_hash: str) -> Optional[dict]:
+        row = self._conn.execute(
+            "SELECT * FROM api_tokens WHERE token_hash = ? AND revoked_at IS NULL",
+            (token_hash,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def seed_tokens_from_map(self, tokens: dict[str, str], pepper: str = "") -> int:
+        from .tokens import hash_token
+        count = 0
+        for secret, org_id in tokens.items():
+            if self.get_org(org_id) is None:
+                self.create_org(org_id, org_id)
+            else:
+                self.ensure_org_catalog(org_id)
+            token_hash = hash_token(secret, pepper)
+            if self._conn.execute(
+                "SELECT 1 FROM api_tokens WHERE token_hash = ?", (token_hash,)
+            ).fetchone():
+                continue
+            self.create_api_token(org_id, "bootstrap", token_hash)
+            count += 1
+        return count
 
     def latest_policies(self, org_id: str) -> list[dict]:
         rows = self._conn.execute(
@@ -85,23 +289,46 @@ class Store:
             ).fetchone()
         return dict(row) if row else None
 
-    # ---- immutable model spec versions ----
+    # ---- immutable per-org model spec versions ----
 
-    def seed_from_directory(self, directory: Path) -> int:
+    def ensure_org_catalog(self, org_id: str) -> None:
+        """Import stashed legacy catalog and YAML defaults when an org has no specs."""
+        self._materialize_global_stash_for_org(org_id)
+        if self.modelspec_versions(org_id):
+            return
+        if not self._seed or self._seed_dir is None:
+            return
+        self.seed_from_directory(self._seed_dir, org_id)
+
+    def seed_from_directory(self, directory: Path, org_id: str) -> int:
         count = 0
         for spec in load_modelspecs(directory).values():
-            if self.register_modelspec(spec, source="yaml", ignore_duplicate=True):
+            if self.register_modelspec(
+                org_id, spec, source="yaml", ignore_duplicate=True
+            ):
                 count += 1
         return count
 
     def register_modelspec(
-        self, spec: ModelSpec, source: str = "api", ignore_duplicate: bool = False
+        self,
+        org_id: str,
+        spec: ModelSpec,
+        source: str = "api",
+        ignore_duplicate: bool = False,
     ) -> bool:
         try:
             self._conn.execute(
                 "INSERT INTO modelspec_versions "
-                "(name, version, spec_json, source, created_at) VALUES (?, ?, ?, ?, ?)",
-                (spec.name, spec.version, spec.model_dump_json(), source, time.time()),
+                "(org_id, name, version, spec_json, source, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    org_id,
+                    spec.name,
+                    spec.version,
+                    spec.model_dump_json(),
+                    source,
+                    time.time(),
+                ),
             )
         except sqlite3.IntegrityError:
             if not ignore_duplicate:
@@ -110,28 +337,37 @@ class Store:
         self._conn.commit()
         return True
 
-    def modelspec_versions(self, name: Optional[str] = None) -> list[dict]:
+    def modelspec_versions(
+        self, org_id: str, name: Optional[str] = None
+    ) -> list[dict]:
         if name is None:
             rows = self._conn.execute(
-                "SELECT * FROM modelspec_versions ORDER BY name, created_at"
+                "SELECT * FROM modelspec_versions WHERE org_id = ? "
+                "ORDER BY name, created_at",
+                (org_id,),
             ).fetchall()
         else:
             rows = self._conn.execute(
-                "SELECT * FROM modelspec_versions WHERE name = ? ORDER BY created_at",
-                (name,),
+                "SELECT * FROM modelspec_versions WHERE org_id = ? AND name = ? "
+                "ORDER BY created_at",
+                (org_id, name),
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def get_modelspec(self, name: str, version: Optional[str] = None) -> Optional[ModelSpec]:
+    def get_modelspec(
+        self, org_id: str, name: str, version: Optional[str] = None
+    ) -> Optional[ModelSpec]:
         if version is None:
             row = self._conn.execute(
-                "SELECT spec_json FROM modelspec_versions WHERE name = ? "
-                "ORDER BY created_at DESC LIMIT 1", (name,)
+                "SELECT spec_json FROM modelspec_versions WHERE org_id = ? AND name = ? "
+                "ORDER BY created_at DESC LIMIT 1",
+                (org_id, name),
             ).fetchone()
         else:
             row = self._conn.execute(
-                "SELECT spec_json FROM modelspec_versions WHERE name = ? AND version = ?",
-                (name, version),
+                "SELECT spec_json FROM modelspec_versions "
+                "WHERE org_id = ? AND name = ? AND version = ?",
+                (org_id, name, version),
             ).fetchone()
         return ModelSpec.model_validate(json.loads(row["spec_json"])) if row else None
 
@@ -139,7 +375,8 @@ class Store:
         self, org_id: str, modelspec: str, version: Optional[str] = None,
         endpoint: Optional[str] = None, credential_ref: Optional[str] = None,
     ) -> None:
-        spec = self.get_modelspec(modelspec, version)
+        self.ensure_org_catalog(org_id)
+        spec = self.get_modelspec(org_id, modelspec, version)
         if spec is None:
             raise KeyError(f"unknown model spec '{modelspec}@{version}'")
         self._conn.execute(
@@ -169,7 +406,8 @@ class Store:
     def upsert_policy(
         self, org_id: str, name: str, base: str, policy_text: str, display: str
     ) -> int:
-        base_spec = self.get_modelspec(base)
+        self.ensure_org_catalog(org_id)
+        base_spec = self.get_modelspec(org_id, base)
         if base_spec is None:
             raise KeyError(f"unknown model spec '{base}'")
         row = self._conn.execute(
