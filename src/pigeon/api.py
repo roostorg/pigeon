@@ -50,9 +50,8 @@ def build_router(
     async def register_modelspec(
         body: ModelSpecCreate, org: str = Depends(get_org)
     ) -> ModelSpecCreate:
-        del org  # auth required; catalog is still global in this prototype
         try:
-            registry.store.register_modelspec(body)
+            registry.store.register_modelspec(org, body)
         except sqlite3.IntegrityError:
             raise HTTPException(status_code=409, detail="model spec version already exists")
         return body
@@ -73,7 +72,6 @@ def build_router(
     async def import_modelspecs(
         body: ModelSpecImport, org: str = Depends(get_org)
     ) -> dict:
-        del org  # auth required; catalog is still global in this prototype
         try:
             raw = yaml.safe_load(body.text)
             values = raw if isinstance(raw, list) else [raw]
@@ -84,7 +82,7 @@ def build_router(
             return {"count": len(specs), "dry_run": True}
         for spec in specs:
             try:
-                registry.store.register_modelspec(spec, source="import")
+                registry.store.register_modelspec(org, spec, source="import")
             except sqlite3.IntegrityError:
                 raise HTTPException(status_code=409, detail=f"{spec.name}@{spec.version} exists")
         return {"count": len(specs), "dry_run": False}
@@ -93,7 +91,7 @@ def build_router(
     async def export_modelspec(name: str, org: str = Depends(get_org), version: str | None = None):
         binding = registry.store.get_binding(org, name)
         selected = version or (binding or {}).get("spec_version")
-        spec = registry.store.get_modelspec(name, selected)
+        spec = registry.store.get_modelspec(org, name, selected)
         if spec is None:
             raise HTTPException(status_code=404, detail="model spec version not found")
         return yaml.safe_dump(spec.model_dump(mode="json"), sort_keys=False)
@@ -137,7 +135,8 @@ def build_router(
     async def create_policy(
         body: PolicyCreate, org: str = Depends(get_org)
     ) -> PolicyResponse:
-        base = registry.store.get_modelspec(body.base)
+        registry.store.ensure_org_catalog(org)
+        base = registry.store.get_modelspec(org, body.base)
         if base is None or not base.policy_argument:
             raise HTTPException(
                 status_code=422,

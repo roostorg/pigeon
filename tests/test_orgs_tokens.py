@@ -207,3 +207,58 @@ def test_creating_token_for_missing_org_returns_not_found(org_client, master_hea
         json={"name": "orphan-token"},
     )
     assert response.status_code == 404
+
+
+def test_modelspec_register_is_scoped_to_org(org_client, master_headers):
+    _create_org(org_client, master_headers, org_id="org-a")
+    _create_org(org_client, master_headers, org_id="org-b")
+    token_a = _create_token(org_client, master_headers, org_id="org-a", name="a").json()[
+        "token"
+    ]
+    token_b = _create_token(org_client, master_headers, org_id="org-b", name="b").json()[
+        "token"
+    ]
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    created = org_client.post(
+        "/v1/modelspecs",
+        headers=headers_a,
+        json={
+            "name": "only-in-a",
+            "version": "1",
+            "model": {"id": "org/only-a", "runtime": "endpoint"},
+            "format": "classifier",
+            "labels": ["ok"],
+            "mode": "signal",
+            "input_types": ["text"],
+        },
+    )
+    assert created.status_code == 201
+    assert (
+        org_client.post(
+            "/v1/modelspecs/only-in-a/enable",
+            headers=headers_a,
+            json={"version": "1"},
+        ).status_code
+        == 200
+    )
+
+    ids_a = {
+        m["id"]
+        for m in org_client.get("/v1/modelspecs", headers=headers_a).json()["modelspecs"]
+    }
+    ids_b = {
+        m["id"]
+        for m in org_client.get("/v1/modelspecs", headers=headers_b).json()["modelspecs"]
+    }
+    assert "only-in-a" in ids_a
+    assert "only-in-a" not in ids_b
+    assert (
+        org_client.post(
+            "/v1/modelspecs/only-in-a/enable",
+            headers=headers_b,
+            json={"version": "1"},
+        ).status_code
+        == 404
+    )
