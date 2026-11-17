@@ -71,9 +71,11 @@ The example file sets `PIGEON_ENV=development`; without it Pigeon runs in produc
 
 ### Model spec registry and database
 
-SQLite is the runtime source of truth for model specs, and the catalog is **per org**.
-YAML files in `PIGEON_MODELSPECS_DIR` are imported into an org the first time it needs a
-catalog (org create / bootstrap). Set `PIGEON_SEED_MODELSPECS=1` to import any missing YAML
+The database is the runtime source of truth for model specs, and the catalog is **per org**.
+Default backend is SQLite (`PIGEON_DB_PATH`). Set `PIGEON_DB_BACKEND=postgres` and
+`PIGEON_DATABASE_URL` (or only the URL) for PostgreSQL. YAML files in
+`PIGEON_MODELSPECS_DIR` are imported into an org the first time it needs a catalog
+(org create / bootstrap). Set `PIGEON_SEED_MODELSPECS=1` to import any missing YAML
 versions into each existing org later; existing `(org, name, version)` rows are immutable.
 `POST /v1/modelspecs` and `POST /v1/modelspecs/import` register into the caller's org only.
 `POST /v1/modelspecs/{name}/enable` pins that org to a version and may override its endpoint.
@@ -81,8 +83,9 @@ versions into each existing org later; existing `(org, name, version)` rows are 
 `PIGEON_ENV` defaults to `production`. In production Pigeon requires
 `PIGEON_MASTER_TOKEN` and `PIGEON_TOKEN_PEPPER`; use the master token only with the admin
 organization/token APIs. `PIGEON_TOKENS` (or `PIGEON_TOKENS_FILE`) is an optional bootstrap
-map imported into an empty database; bearer token authentication thereafter uses SQLite
-hashes. Development defaults to `dev-master-token` and seeds `dev-token` for `dev-org`.
+map imported into an empty database; bearer token authentication thereafter uses hashed
+tokens in the configured store (SQLite or Postgres). Development defaults to
+`dev-master-token` and seeds `dev-token` for `dev-org`.
 
 Create an organization and token with the master token:
 
@@ -105,10 +108,27 @@ cp .env.example .env   # if you have not already
 docker compose up --build
 ```
 
-Compose loads app settings from `.env`. It only overrides three values inside the
-container (`PIGEON_HOST=0.0.0.0`, modelspecs dir, and the SQLite path on the
-data volume) so a native-oriented `.env` still works. Change provider, tokens,
-pepper, etc. in `.env`, not in `compose.yaml`.
+Compose loads app settings from `.env`. The default `app` service uses SQLite
+on the `pigeon-data` volume. For PostgreSQL:
+
+```bash
+docker compose --profile postgres up --build db app-pg
+```
+
+That starts Postgres and the `app-pg` container with `PIGEON_DB_BACKEND=postgres`.
+Change provider, tokens, pepper, etc. in `.env`, not in `compose.yaml`. The DB
+is published on **127.0.0.1:5433** by default (`PIGEON_DB_PUBLISH_*`) so it does
+not clash with a local Postgres on 5432. Compose DB credentials default to
+`pigeon`/`pigeon` for local use only (loopback publish); override
+`PIGEON_POSTGRES_USER` / `PASSWORD` / `DB` together. `app-pg` builds its URL from
+those vars (or `PIGEON_COMPOSE_DATABASE_URL`) and ignores native
+`PIGEON_DATABASE_URL` from `.env` so a host `127.0.0.1` URL cannot break the
+container. For host-side store tests against that container:
+
+```bash
+PIGEON_TEST_DATABASE_URL=postgresql://pigeon:pigeon@127.0.0.1:5433/pigeon \
+  uv run pytest tests/test_postgres_store.py
+```
 
 Publish address/port are compose-level (not app env):
 
@@ -116,10 +136,10 @@ Publish address/port are compose-level (not app env):
 PIGEON_PUBLISH_PORT=8901 docker compose up --build
 ```
 
-The compose setup stores SQLite in the `pigeon-data` volume, mounts `./modelspecs`
-read-only, runs as non-root with a read-only root filesystem (`cap_drop: ALL`,
-`no-new-privileges`), and listens on `0.0.0.0` *inside* the container. Native
-runs still use `PIGEON_HOST` from `.env` (default `127.0.0.1`).
+Containers mount `./modelspecs` read-only, run as non-root with a read-only root
+filesystem (`cap_drop: ALL`, `no-new-privileges`), and listen on `0.0.0.0`
+*inside* the container. Native runs still use `PIGEON_HOST` from `.env`
+(default `127.0.0.1`).
 
 Try it (dev token from `.env.example`):
 

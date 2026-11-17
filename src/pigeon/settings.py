@@ -4,11 +4,13 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 DEFAULT_DEV_TOKEN = "dev-token"
 DEFAULT_DEV_ORG = "dev-org"
 
 ENVIRONMENTS = ("development", "production")
+DB_BACKENDS = ("sqlite", "postgres")
 MIN_PRODUCTION_TOKEN_LENGTH = 32
 DEFAULT_MEDIA_MAX_BYTES = 10_000_000
 DEFAULT_DEV_MASTER_TOKEN = "dev-master-token"
@@ -39,11 +41,26 @@ class Settings:
     environment: str = "production"
     seed_modelspecs: bool = False
     media_max_bytes: int = DEFAULT_MEDIA_MAX_BYTES
+    db_backend: str = "sqlite"
+    database_url: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.environment not in ENVIRONMENTS:
             raise ValueError(
                 f"PIGEON_ENV must be one of {', '.join(ENVIRONMENTS)}, got '{self.environment}'"
+            )
+        if self.db_backend not in DB_BACKENDS:
+            raise ValueError(
+                f"PIGEON_DB_BACKEND must be one of {', '.join(DB_BACKENDS)}, "
+                f"got '{self.db_backend}'"
+            )
+        if self.db_backend == "postgres" and not self.database_url:
+            raise ValueError("PIGEON_DATABASE_URL must be set when PIGEON_DB_BACKEND=postgres")
+        if self.database_url and not self.database_url.startswith(
+            ("postgres://", "postgresql://")
+        ):
+            raise ValueError(
+                "PIGEON_DATABASE_URL must start with postgres:// or postgresql://"
             )
         if not isinstance(self.bootstrap_tokens, dict):
             raise ValueError("PIGEON_TOKENS must be a JSON object of token -> org id")
@@ -104,6 +121,18 @@ class Settings:
             tokens = {DEFAULT_DEV_TOKEN: DEFAULT_DEV_ORG} if environment == "development" else {}
         if (raw_tokens or tokens_file) and (not isinstance(tokens, dict) or not tokens):
             raise ValueError("PIGEON_TOKENS must be a non-empty JSON object of token -> org id")
+        database_url = os.environ.get("PIGEON_DATABASE_URL") or None
+        db_backend = os.environ.get("PIGEON_DB_BACKEND")
+        if not db_backend:
+            if database_url:
+                # Explicit URL with a bad scheme must not silently fall back to SQLite.
+                if not database_url.startswith(("postgres://", "postgresql://")):
+                    raise ValueError(
+                        "PIGEON_DATABASE_URL must start with postgres:// or postgresql://"
+                    )
+                db_backend = "postgres"
+            else:
+                db_backend = "sqlite"
         return Settings(
             provider=os.environ.get("PIGEON_PROVIDER", "mock"),
             modelspecs_dir=Path(os.environ.get("PIGEON_MODELSPECS_DIR", "modelspecs")),
@@ -121,4 +150,6 @@ class Settings:
                 "PIGEON_MEDIA_MAX_BYTES",
                 DEFAULT_MEDIA_MAX_BYTES,
             ),
+            db_backend=db_backend,
+            database_url=database_url,
         )

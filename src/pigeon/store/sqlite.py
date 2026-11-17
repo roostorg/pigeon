@@ -1,25 +1,31 @@
 from __future__ import annotations
 
-import sqlite3
-import time
 import json
+import sqlite3
+import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Optional
 
-from .modelspecs import ModelSpec, load_modelspecs
+from ..modelspecs import ModelSpec, load_modelspecs
+from .errors import DuplicateError
 
-"""Per-org state: versioned BYOP policies and which base modelspecs an org has enabled.
-SQLite keeps the prototype self-contained; swap for the eng team's datastore later."""
+"""SQLite implementation of the store protocol."""
 
 
-class Store:
+class SqliteStore:
     def __init__(self, path: Path, seed_dir: Optional[Path] = None, seed: bool = True):
         self._seed_dir = seed_dir
         self._seed = seed
+        self._lock = threading.Lock()
         self._conn = sqlite3.connect(str(path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init()
+
+    def close(self) -> None:
+        with self._lock:
+            self._conn.close()
 
     def _init(self) -> None:
         self._conn.executescript(
@@ -179,20 +185,28 @@ class Store:
 
     def create_org(self, org_id: str, display_name: str) -> dict:
         row = {"id": org_id, "display_name": display_name, "created_at": time.time()}
-        self._conn.execute(
-            "INSERT INTO orgs (id, display_name, created_at) VALUES (?, ?, ?)",
-            (row["id"], row["display_name"], row["created_at"]),
-        )
-        self._conn.commit()
+        with self._lock:
+            try:
+                self._conn.execute(
+                    "INSERT INTO orgs (id, display_name, created_at) VALUES (?, ?, ?)",
+                    (row["id"], row["display_name"], row["created_at"]),
+                )
+            except sqlite3.IntegrityError as exc:
+                raise DuplicateError(f"organization '{org_id}' already exists") from exc
+            self._conn.commit()
         self.ensure_org_catalog(org_id)
         return row
 
     def list_orgs(self) -> list[dict]:
-        rows = self._conn.execute("SELECT * FROM orgs ORDER BY id").fetchall()
+        with self._lock:
+            rows = self._conn.execute("SELECT * FROM orgs ORDER BY id").fetchall()
         return [dict(row) for row in rows]
 
     def get_org(self, org_id: str) -> Optional[dict]:
-        row = self._conn.execute("SELECT * FROM orgs WHERE id = ?", (org_id,)).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM orgs WHERE id = ?", (org_id,)
+            ).fetchone()
         return dict(row) if row else None
 
     def create_api_token(self, org_id: str, name: str, token_hash: str) -> dict:
@@ -204,46 +218,55 @@ class Store:
             "created_at": time.time(),
             "revoked_at": None,
         }
-        self._conn.execute(
-            "INSERT INTO api_tokens "
-            "(id, org_id, name, token_hash, created_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?)",
-            tuple(row.values()),
-        )
-        self._conn.commit()
+        with self._lock:
+            try:
+                self._conn.execute(
+                    "INSERT INTO api_tokens "
+                    "(id, org_id, name, token_hash, created_at, revoked_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    tuple(row.values()),
+                )
+            except sqlite3.IntegrityError as exc:
+                raise DuplicateError("token could not be created") from exc
+            self._conn.commit()
         return row
 
     def list_api_tokens(self, org_id: Optional[str] = None) -> list[dict]:
-        if org_id is None:
-            rows = self._conn.execute(
-                "SELECT id, org_id, name, created_at, revoked_at FROM api_tokens "
-                "ORDER BY created_at, id"
-            ).fetchall()
-        else:
-            rows = self._conn.execute(
-                "SELECT id, org_id, name, created_at, revoked_at FROM api_tokens "
-                "WHERE org_id = ? ORDER BY created_at, id",
-                (org_id,),
-            ).fetchall()
+        with self._lock:
+            if org_id is None:
+                rows = self._conn.execute(
+                    "SELECT id, org_id, name, created_at, revoked_at FROM api_tokens "
+                    "ORDER BY created_at, id"
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT id, org_id, name, created_at, revoked_at FROM api_tokens "
+                    "WHERE org_id = ? ORDER BY created_at, id",
+                    (org_id,),
+                ).fetchall()
         return [dict(row) for row in rows]
 
     def revoke_api_token(self, org_id: str, token_id: str) -> bool:
-        cursor = self._conn.execute(
-            "UPDATE api_tokens SET revoked_at = ? "
-            "WHERE id = ? AND org_id = ? AND revoked_at IS NULL",
-            (time.time(), token_id, org_id),
-        )
-        self._conn.commit()
-        return cursor.rowcount > 0
+        with self._lock:
+            cursor = self._conn.execute(
+                "UPDATE api_tokens SET revoked_at = ? "
+                "WHERE id = ? AND org_id = ? AND revoked_at IS NULL",
+                (time.time(), token_id, org_id),
+            )
+            self._conn.commit()
+            return cursor.rowcount > 0
 
     def resolve_api_token(self, token_hash: str) -> Optional[dict]:
-        row = self._conn.execute(
-            "SELECT * FROM api_tokens WHERE token_hash = ? AND revoked_at IS NULL",
-            (token_hash,),
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM api_tokens WHERE token_hash = ? AND revoked_at IS NULL",
+                (token_hash,),
+            ).fetchone()
         return dict(row) if row else None
 
     def seed_tokens_from_map(self, tokens: dict[str, str], pepper: str = "") -> int:
-        from .tokens import hash_token
+        from ..tokens import hash_token
+
         count = 0
         for secret, org_id in tokens.items():
             if self.get_org(org_id) is None:
@@ -251,42 +274,47 @@ class Store:
             else:
                 self.ensure_org_catalog(org_id)
             token_hash = hash_token(secret, pepper)
-            if self._conn.execute(
-                "SELECT 1 FROM api_tokens WHERE token_hash = ?", (token_hash,)
-            ).fetchone():
+            with self._lock:
+                existing = self._conn.execute(
+                    "SELECT 1 FROM api_tokens WHERE token_hash = ?", (token_hash,)
+                ).fetchone()
+            if existing:
                 continue
             self.create_api_token(org_id, "bootstrap", token_hash)
             count += 1
         return count
 
     def latest_policies(self, org_id: str) -> list[dict]:
-        rows = self._conn.execute(
-            """
-            SELECT p.* FROM policies p
-            JOIN (
-                SELECT name, MAX(version) AS v FROM policies WHERE org_id = ? GROUP BY name
-            ) m ON p.name = m.name AND p.version = m.v
-            WHERE p.org_id = ?
-            ORDER BY p.name
-            """,
-            (org_id, org_id),
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                """
+                SELECT p.* FROM policies p
+                JOIN (
+                    SELECT name, MAX(version) AS v FROM policies
+                    WHERE org_id = ? GROUP BY name
+                ) m ON p.name = m.name AND p.version = m.v
+                WHERE p.org_id = ?
+                ORDER BY p.name
+                """,
+                (org_id, org_id),
+            ).fetchall()
         return [dict(r) for r in rows]
 
     def get_policy(
         self, org_id: str, name: str, version: Optional[int] = None
     ) -> Optional[dict]:
-        if version is None:
-            row = self._conn.execute(
-                "SELECT * FROM policies WHERE org_id = ? AND name = ?"
-                " ORDER BY version DESC LIMIT 1",
-                (org_id, name),
-            ).fetchone()
-        else:
-            row = self._conn.execute(
-                "SELECT * FROM policies WHERE org_id = ? AND name = ? AND version = ?",
-                (org_id, name, version),
-            ).fetchone()
+        with self._lock:
+            if version is None:
+                row = self._conn.execute(
+                    "SELECT * FROM policies WHERE org_id = ? AND name = ?"
+                    " ORDER BY version DESC LIMIT 1",
+                    (org_id, name),
+                ).fetchone()
+            else:
+                row = self._conn.execute(
+                    "SELECT * FROM policies WHERE org_id = ? AND name = ? AND version = ?",
+                    (org_id, name, version),
+                ).fetchone()
         return dict(row) if row else None
 
     # ---- immutable per-org model spec versions ----
@@ -316,59 +344,65 @@ class Store:
         source: str = "api",
         ignore_duplicate: bool = False,
     ) -> bool:
-        try:
-            self._conn.execute(
-                "INSERT INTO modelspec_versions "
-                "(org_id, name, version, spec_json, source, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    org_id,
-                    spec.name,
-                    spec.version,
-                    spec.model_dump_json(),
-                    source,
-                    time.time(),
-                ),
-            )
-        except sqlite3.IntegrityError:
-            if not ignore_duplicate:
-                raise
-            return False
-        self._conn.commit()
+        with self._lock:
+            try:
+                self._conn.execute(
+                    "INSERT INTO modelspec_versions "
+                    "(org_id, name, version, spec_json, source, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        org_id,
+                        spec.name,
+                        spec.version,
+                        spec.model_dump_json(),
+                        source,
+                        time.time(),
+                    ),
+                )
+            except sqlite3.IntegrityError as exc:
+                if ignore_duplicate:
+                    return False
+                raise DuplicateError(
+                    f"model spec '{spec.name}@{spec.version}' already exists"
+                ) from exc
+            self._conn.commit()
         return True
 
     def modelspec_versions(
         self, org_id: str, name: Optional[str] = None
     ) -> list[dict]:
-        if name is None:
-            rows = self._conn.execute(
-                "SELECT * FROM modelspec_versions WHERE org_id = ? "
-                "ORDER BY name, created_at",
-                (org_id,),
-            ).fetchall()
-        else:
-            rows = self._conn.execute(
-                "SELECT * FROM modelspec_versions WHERE org_id = ? AND name = ? "
-                "ORDER BY created_at",
-                (org_id, name),
-            ).fetchall()
+        with self._lock:
+            if name is None:
+                rows = self._conn.execute(
+                    "SELECT * FROM modelspec_versions WHERE org_id = ? "
+                    "ORDER BY name, created_at",
+                    (org_id,),
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM modelspec_versions WHERE org_id = ? AND name = ? "
+                    "ORDER BY created_at",
+                    (org_id, name),
+                ).fetchall()
         return [dict(row) for row in rows]
 
     def get_modelspec(
         self, org_id: str, name: str, version: Optional[str] = None
     ) -> Optional[ModelSpec]:
-        if version is None:
-            row = self._conn.execute(
-                "SELECT spec_json FROM modelspec_versions WHERE org_id = ? AND name = ? "
-                "ORDER BY created_at DESC LIMIT 1",
-                (org_id, name),
-            ).fetchone()
-        else:
-            row = self._conn.execute(
-                "SELECT spec_json FROM modelspec_versions "
-                "WHERE org_id = ? AND name = ? AND version = ?",
-                (org_id, name, version),
-            ).fetchone()
+        with self._lock:
+            if version is None:
+                row = self._conn.execute(
+                    "SELECT spec_json FROM modelspec_versions "
+                    "WHERE org_id = ? AND name = ? "
+                    "ORDER BY created_at DESC LIMIT 1",
+                    (org_id, name),
+                ).fetchone()
+            else:
+                row = self._conn.execute(
+                    "SELECT spec_json FROM modelspec_versions "
+                    "WHERE org_id = ? AND name = ? AND version = ?",
+                    (org_id, name, version),
+                ).fetchone()
         return ModelSpec.model_validate(json.loads(row["spec_json"])) if row else None
 
     def enable(
@@ -379,28 +413,35 @@ class Store:
         spec = self.get_modelspec(org_id, modelspec, version)
         if spec is None:
             raise KeyError(f"unknown model spec '{modelspec}@{version}'")
-        self._conn.execute(
-            "INSERT INTO org_model_bindings "
-            "(org_id, model_name, spec_version, endpoint, credential_ref, enabled) "
-            "VALUES (?, ?, ?, ?, ?, 1) "
-            "ON CONFLICT(org_id, model_name) DO UPDATE SET spec_version=excluded.spec_version, "
-            "endpoint=excluded.endpoint, credential_ref=excluded.credential_ref, enabled=1",
-            (org_id, modelspec, spec.version, endpoint, credential_ref),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO org_model_bindings "
+                "(org_id, model_name, spec_version, endpoint, credential_ref, enabled) "
+                "VALUES (?, ?, ?, ?, ?, 1) "
+                "ON CONFLICT(org_id, model_name) DO UPDATE SET "
+                "spec_version=excluded.spec_version, "
+                "endpoint=excluded.endpoint, credential_ref=excluded.credential_ref, "
+                "enabled=1",
+                (org_id, modelspec, spec.version, endpoint, credential_ref),
+            )
+            self._conn.commit()
 
     def enabled_bindings(self, org_id: str) -> list[dict]:
-        rows = self._conn.execute(
-            "SELECT * FROM org_model_bindings WHERE org_id = ? AND enabled = 1 ORDER BY model_name",
-            (org_id,),
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM org_model_bindings "
+                "WHERE org_id = ? AND enabled = 1 ORDER BY model_name",
+                (org_id,),
+            ).fetchall()
         return [dict(row) for row in rows]
 
     def get_binding(self, org_id: str, name: str) -> Optional[dict]:
-        row = self._conn.execute(
-            "SELECT * FROM org_model_bindings WHERE org_id = ? AND model_name = ? AND enabled = 1",
-            (org_id, name),
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT * FROM org_model_bindings "
+                "WHERE org_id = ? AND model_name = ? AND enabled = 1",
+                (org_id, name),
+            ).fetchone()
         return dict(row) if row else None
 
     def upsert_policy(
@@ -410,22 +451,37 @@ class Store:
         base_spec = self.get_modelspec(org_id, base)
         if base_spec is None:
             raise KeyError(f"unknown model spec '{base}'")
-        row = self._conn.execute(
-            "SELECT COALESCE(MAX(version), 0) AS v FROM policies WHERE org_id = ? AND name = ?",
-            (org_id, name),
-        ).fetchone()
-        version = row["v"] + 1
-        self._conn.execute(
-            "INSERT INTO policies "
-            "(org_id, name, version, base, base_version, policy_text, display, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (org_id, name, version, base, base_spec.version, policy_text, display, time.time()),
-        )
-        self._conn.commit()
+        # Hold the lock across version read + insert so concurrent threads cannot
+        # allocate the same next version on the shared connection.
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COALESCE(MAX(version), 0) AS v FROM policies "
+                "WHERE org_id = ? AND name = ?",
+                (org_id, name),
+            ).fetchone()
+            version = row["v"] + 1
+            self._conn.execute(
+                "INSERT INTO policies "
+                "(org_id, name, version, base, base_version, policy_text, display, "
+                "created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    org_id,
+                    name,
+                    version,
+                    base,
+                    base_spec.version,
+                    policy_text,
+                    display,
+                    time.time(),
+                ),
+            )
+            self._conn.commit()
         return version
 
     def delete_policies(self, org_id: str, name: str) -> None:
-        self._conn.execute(
-            "DELETE FROM policies WHERE org_id = ? AND name = ?", (org_id, name)
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "DELETE FROM policies WHERE org_id = ? AND name = ?", (org_id, name)
+            )
+            self._conn.commit()

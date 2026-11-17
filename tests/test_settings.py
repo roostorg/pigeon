@@ -18,6 +18,8 @@ _ENV_VARS = (
     "PIGEON_PROVIDER",
     "PIGEON_MODELSPECS_DIR",
     "PIGEON_DB_PATH",
+    "PIGEON_DB_BACKEND",
+    "PIGEON_DATABASE_URL",
     "PIGEON_MEDIA_MAX_BYTES",
 )
 
@@ -112,6 +114,31 @@ def test_media_max_bytes_rejected(monkeypatch):
         monkeypatch.setenv("PIGEON_MEDIA_MAX_BYTES", raw)
         with pytest.raises(ValueError, match="PIGEON_MEDIA_MAX_BYTES"):
             Settings.from_env()
+
+
+def test_database_url_auto_selects_postgres(monkeypatch):
+    monkeypatch.setenv("PIGEON_ENV", "development")
+    monkeypatch.setenv(
+        "PIGEON_DATABASE_URL", "postgresql://pigeon:pigeon@127.0.0.1:5433/pigeon"
+    )
+    settings = Settings.from_env()
+    assert settings.db_backend == "postgres"
+    assert settings.database_url is not None
+
+
+def test_database_url_bad_scheme_rejected(monkeypatch):
+    monkeypatch.setenv("PIGEON_ENV", "development")
+    monkeypatch.setenv("PIGEON_DATABASE_URL", "postgre://pigeon@127.0.0.1/pigeon")
+    with pytest.raises(ValueError, match="PIGEON_DATABASE_URL must start with"):
+        Settings.from_env()
+
+
+def test_database_url_bad_scheme_rejected_with_explicit_backend(monkeypatch):
+    monkeypatch.setenv("PIGEON_ENV", "development")
+    monkeypatch.setenv("PIGEON_DB_BACKEND", "postgres")
+    monkeypatch.setenv("PIGEON_DATABASE_URL", "mysql://pigeon@127.0.0.1/pigeon")
+    with pytest.raises(ValueError, match="PIGEON_DATABASE_URL must start with"):
+        Settings.from_env()
 
 
 @pytest.mark.parametrize("environment", ["development", "production"])
