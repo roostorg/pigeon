@@ -10,7 +10,7 @@ from .providers.base import ProviderClient
 from .providers.mock import MockProvider
 from .registry import Registry
 from .settings import Settings
-from .store import Store
+from .store import create_store
 
 
 def _make_provider(settings: Settings) -> ProviderClient:
@@ -27,8 +27,10 @@ def _make_provider(settings: Settings) -> ProviderClient:
 
 def create_app(settings: Optional[Settings] = None) -> FastAPI:
     settings = settings or Settings.from_env()
-    store = Store(
-        settings.db_path,
+    store = create_store(
+        backend=settings.db_backend,
+        db_path=settings.db_path,
+        database_url=settings.database_url,
         seed_dir=settings.modelspecs_dir,
         seed=True,
     )

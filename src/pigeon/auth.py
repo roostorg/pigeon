@@ -7,7 +7,7 @@ from typing import Awaitable, Callable, Literal, Optional
 from fastapi import Header, HTTPException
 
 from .settings import Settings
-from .store import Store
+from .store import StoreProtocol
 from .tokens import hash_token
 
 
@@ -18,7 +18,9 @@ class AuthContext:
     token_id: Optional[str] = None
 
 
-def make_auth(settings: Settings, store: Store) -> Callable[[str], Awaitable[AuthContext]]:
+def make_auth(
+    settings: Settings, store: StoreProtocol
+) -> Callable[[str], Awaitable[AuthContext]]:
     async def get_auth(authorization: str = Header(default="")) -> AuthContext:
         scheme, _, token = authorization.partition(" ")
         if scheme.lower() != "bearer" or not token.strip():

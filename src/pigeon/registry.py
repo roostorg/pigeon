@@ -5,7 +5,7 @@ from typing import Optional
 
 from .modelspecs import ModelSpec
 from .schemas import LabelSpec, ModelSpecSummary
-from .store import Store
+from .store import StoreProtocol
 
 
 @dataclass
@@ -23,7 +23,7 @@ class Registry:
     """Turns per-org modelspecs + policies into the signal list a consumer sees,
     and resolves a model reference ("name" or "name@version") to something callable."""
 
-    def __init__(self, store: Store):
+    def __init__(self, store: StoreProtocol):
         self.store = store
 
     def ensure_defaults(self, org_id: str) -> None:

@@ -5,7 +5,7 @@ import sqlite3
 import pytest
 
 from pigeon.modelspecs import ModelSpec
-from pigeon.store import Store
+from pigeon.store import DuplicateError, Store
 
 from .conftest import MODELSPECS_DIR
 
@@ -64,7 +64,7 @@ def test_register_modelspec_is_immutable(tmp_path):
         }
     )
     assert store.register_modelspec(ORG, spec) is True
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(DuplicateError):
         store.register_modelspec(ORG, spec)
     assert store.register_modelspec(ORG, spec, ignore_duplicate=True) is False
     assert store.get_modelspec(ORG, "demo", "missing") is None

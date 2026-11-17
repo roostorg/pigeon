@@ -1,5 +1,26 @@
 services:
-  pigeon:
+  db:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      # Local-dev defaults only (published on loopback). Override all three together
+      # with matching values; app-pg builds its URL from the same vars.
+      POSTGRES_USER: ${PIGEON_POSTGRES_USER:-pigeon}
+      POSTGRES_PASSWORD: ${PIGEON_POSTGRES_PASSWORD:-pigeon}
+      POSTGRES_DB: ${PIGEON_POSTGRES_DB:-pigeon}
+    ports:
+      # Host publish only (app uses the compose network). Bound to loopback;
+      # default 5433 avoids clashing with a local Postgres on 5432.
+      - "${PIGEON_DB_PUBLISH_ADDR:-127.0.0.1}:${PIGEON_DB_PUBLISH_PORT:-5433}:5432"
+    volumes:
+      - pigeon-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -12,6 +33,7 @@ services:
       - path: .env
         required: true
     environment:
+      # Only values that must differ from a native .env inside the container.
       PIGEON_HOST: "0.0.0.0"
       PIGEON_MODELSPECS_DIR: /app/modelspecs
       PIGEON_DB_PATH: /var/lib/pigeon/pigeon.db
@@ -27,5 +49,42 @@ services:
     tmpfs:
       - /tmp
 
+  # Same app image, wired to Postgres. Start with:
+  #   docker compose --profile postgres up --build db app-pg
+  # (name services so the unprofiled `app` SQLite service does not also start)
+  app-pg:
+    profiles: ["postgres"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PIGEON_PUBLISH_ADDR:-127.0.0.1}:${PIGEON_PUBLISH_PORT:-8900}:8900"
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      PIGEON_HOST: "0.0.0.0"
+      PIGEON_MODELSPECS_DIR: /app/modelspecs
+      PIGEON_DB_BACKEND: postgres
+      # In-compose URL only (host `db`). Do not reuse native PIGEON_DATABASE_URL
+      # from .env (that points at 127.0.0.1 and breaks inside the container).
+      # Keep in sync with PIGEON_POSTGRES_* on `db`. For passwords with URL-reserved
+      # characters, set PIGEON_COMPOSE_DATABASE_URL explicitly instead.
+      PIGEON_DATABASE_URL: ${PIGEON_COMPOSE_DATABASE_URL:-postgresql://${PIGEON_POSTGRES_USER:-pigeon}:${PIGEON_POSTGRES_PASSWORD:-pigeon}@db:5432/${PIGEON_POSTGRES_DB:-pigeon}}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./modelspecs:/app/modelspecs:ro
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
 volumes:
   pigeon-data:
+  pigeon-pgdata:

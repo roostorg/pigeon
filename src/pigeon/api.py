@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sqlite3
 import secrets
 from typing import Awaitable, Callable
 
@@ -22,6 +21,7 @@ from .schemas import (
     ModelSpecEnable,
     ModelSpecImport,
 )
+from .store import DuplicateError
 from .tokens import hash_token
 
 GetAuth = Callable[..., Awaitable[AuthContext]]
@@ -52,7 +52,7 @@ def build_router(
     ) -> ModelSpecCreate:
         try:
             registry.store.register_modelspec(org, body)
-        except sqlite3.IntegrityError:
+        except DuplicateError:
             raise HTTPException(status_code=409, detail="model spec version already exists")
         return body
 
@@ -83,7 +83,7 @@ def build_router(
         for spec in specs:
             try:
                 registry.store.register_modelspec(org, spec, source="import")
-            except sqlite3.IntegrityError:
+            except DuplicateError:
                 raise HTTPException(status_code=409, detail=f"{spec.name}@{spec.version} exists")
         return {"count": len(specs), "dry_run": False}
 
@@ -164,7 +164,7 @@ def build_router(
             raise HTTPException(status_code=422, detail="id and displayName are required")
         try:
             row = registry.store.create_org(org_id, display_name)
-        except sqlite3.IntegrityError:
+        except DuplicateError:
             raise HTTPException(status_code=409, detail="organization already exists")
         return {"id": row["id"], "displayName": row["display_name"], "createdAt": row["created_at"]}
 
@@ -187,7 +187,7 @@ def build_router(
         secret = secrets.token_urlsafe(32)
         try:
             row = registry.store.create_api_token(org_id, name, hash_token(secret, token_pepper))
-        except sqlite3.IntegrityError:
+        except DuplicateError:
             raise HTTPException(status_code=409, detail="token could not be created")
         return {"id": row["id"], "name": row["name"], "orgId": org_id, "token": secret}
 
