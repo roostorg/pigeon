@@ -69,7 +69,10 @@ The example file sets `PIGEON_ENV=development`; without it Pigeon runs in produc
 
 The database is the runtime source of truth for model specs, and the catalog is **per org**.
 Default backend is SQLite (`PIGEON_DB_PATH`). Set `PIGEON_DB_BACKEND=postgres` and
-`PIGEON_DATABASE_URL` (or only the URL) for PostgreSQL. YAML files in
+`PIGEON_DATABASE_URL` (or only the URL) for PostgreSQL. Postgres uses a connection pool
+(`PIGEON_DB_POOL_MIN` / `PIGEON_DB_POOL_MAX` / `PIGEON_DB_POOL_TIMEOUT`, defaults 1 / 10 / 30s) and applies packaged SQL
+migrations (`src/pigeon/store/migrations/postgres/YYYYMMDD_HHMMSS_name.sql`) tracked in
+`schema_migrations` on startup under an advisory lock. YAML files in
 `PIGEON_MODELSPECS_DIR` are imported into an org the first time it needs a catalog
 (org create / bootstrap). Set `PIGEON_SEED_MODELSPECS=1` to import any missing YAML
 versions into each existing org later; existing `(org, name, version)` rows are immutable.

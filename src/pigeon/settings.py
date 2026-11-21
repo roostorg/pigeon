@@ -13,6 +13,9 @@ ENVIRONMENTS = ("development", "production")
 DB_BACKENDS = ("sqlite", "postgres")
 MIN_PRODUCTION_TOKEN_LENGTH = 32
 DEFAULT_MEDIA_MAX_BYTES = 10_000_000
+DEFAULT_DB_POOL_MIN = 1
+DEFAULT_DB_POOL_MAX = 10
+DEFAULT_DB_POOL_TIMEOUT = 30.0
 DEFAULT_DEV_MASTER_TOKEN = "dev-master-token"
 DEFAULT_DEV_TOKEN_PEPPER = "dev-token-pepper"
 
@@ -30,6 +33,19 @@ def _positive_int_env(name: str, default: int) -> int:
     return value
 
 
+def _positive_float_env(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number") from exc
+    if value <= 0 or value != value or value == float("inf"):
+        raise ValueError(f"{name} must be a positive number")
+    return value
+
+
 @dataclass(frozen=True)
 class Settings:
     provider: str
@@ -43,6 +59,9 @@ class Settings:
     media_max_bytes: int = DEFAULT_MEDIA_MAX_BYTES
     db_backend: str = "sqlite"
     database_url: Optional[str] = None
+    db_pool_min: int = DEFAULT_DB_POOL_MIN
+    db_pool_max: int = DEFAULT_DB_POOL_MAX
+    db_pool_timeout: float = DEFAULT_DB_POOL_TIMEOUT
 
     def __post_init__(self) -> None:
         if self.environment not in ENVIRONMENTS:
@@ -62,6 +81,12 @@ class Settings:
             raise ValueError(
                 "PIGEON_DATABASE_URL must start with postgres:// or postgresql://"
             )
+        if self.db_pool_min < 1:
+            raise ValueError("PIGEON_DB_POOL_MIN must be at least 1")
+        if self.db_pool_max < self.db_pool_min:
+            raise ValueError("PIGEON_DB_POOL_MAX must be >= PIGEON_DB_POOL_MIN")
+        if self.db_pool_timeout <= 0:
+            raise ValueError("PIGEON_DB_POOL_TIMEOUT must be positive")
         if not isinstance(self.bootstrap_tokens, dict):
             raise ValueError("PIGEON_TOKENS must be a JSON object of token -> org id")
         for token, org in self.bootstrap_tokens.items():
@@ -152,4 +177,9 @@ class Settings:
             ),
             db_backend=db_backend,
             database_url=database_url,
+            db_pool_min=_positive_int_env("PIGEON_DB_POOL_MIN", DEFAULT_DB_POOL_MIN),
+            db_pool_max=_positive_int_env("PIGEON_DB_POOL_MAX", DEFAULT_DB_POOL_MAX),
+            db_pool_timeout=_positive_float_env(
+                "PIGEON_DB_POOL_TIMEOUT", DEFAULT_DB_POOL_TIMEOUT
+            ),
         )
