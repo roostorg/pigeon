@@ -1,0 +1,69 @@
+tests/test_settings.py
+  s_ac6216cbfd8a06::t_fa12a8982bc91c 152,156,160,166-172
+  s_ac6216cbfd8a06::t_0e9ed3de0a75ac 23-24
+  s_ac6216cbfd8a06::t_304a15ff5f02d7 25
+  s_ac6216cbfd8a06::t_aa99d7977392d2 147-151,153-155,157-159,161-165,173-174
+src/pigeon/settings.py
+  s_ac6216cbfd8a06::t_f33fec4f46eac5 16-17
+  s_ac6216cbfd8a06::t_594e8126621a2f 36-48
+  s_ac6216cbfd8a06::t_e8206804437fe1 180-181
+  s_ac6216cbfd8a06::t_60d084824ae933 64
+  s_ac6216cbfd8a06::t_a61ac275af530b 84-87
+  s_ac6216cbfd8a06::t_d27d9924034ddc 182-184
+  s_ac6216cbfd8a06::t_0cc94180b73bd4 62-63
+  s_ac6216cbfd8a06::t_f02cbfd9b8ac1c 88-89
+  s_ac6216cbfd8a06::t_92cfa57dfe470c 18
+README.md
+  s_ac6216cbfd8a06::t_209c6abd3c6538 72
+  s_ac6216cbfd8a06::t_a365184b3a8e23 73
+  s_ac6216cbfd8a06::t_5c5ba25d84359a 74-75
+src/pigeon/store/postgres.py
+  s_ac6216cbfd8a06::t_b14880cbbaac79 12,14,17-19,28-31,34,36-39,43-57,59,61-62,65,69-72,75-76,80-81,85-90
+  s_ac6216cbfd8a06::t_442d79049b4ff6 40-41
+pyproject.toml
+  s_ac6216cbfd8a06::t_a1dc26a2785505 15
+src/pigeon/store/__init__.py
+  s_ac6216cbfd8a06::t_956b81a202b768 32,50
+  s_ac6216cbfd8a06::t_ff0c9d8bfd8c37 30-31,44-49,51
+src/pigeon/store/migrations/__init__.py
+  s_ac6216cbfd8a06::t_b2fabe2d0099de 35
+  s_ac6216cbfd8a06::t_3205b1191cf795 1-10,12-34,36-100
+  s_ac6216cbfd8a06::t_557adab4da9964 11
+.env.example
+  s_ac6216cbfd8a06::t_37c419c8865f56 37-38
+  s_ac6216cbfd8a06::t_48aa7d50918043 36,39
+src/pigeon/main.py
+  s_ac6216cbfd8a06::t_f4826860abb3d7 3
+  s_ac6216cbfd8a06::t_e0c72bfd14efa3 39
+  s_ac6216cbfd8a06::t_a3905c3817ecbe 37-38,50-57
+tests/test_postgres_store.py
+  s_ac6216cbfd8a06::t_ff6226d2ce249d 132,146,149,154
+  s_ac6216cbfd8a06::t_ce4176fb1a9d0f 138-140,142,144,158-160
+  s_ac6216cbfd8a06::t_1c3c11c82ef692 127-131,133-137,141,143,145,147-148,150-153,155-157,161-178
+  s_ac6216cbfd8a06::t_29e3d2ee8af09f 5,11
+src/pigeon/store/migrations/postgres/__init__.py
+  s_ac6216cbfd8a06::t_ae6fe014fbcb82 1
+tests/test_migrations.py
+  s_ac6216cbfd8a06::t_27a47e57634f11 1-8,10-14
+  s_ac6216cbfd8a06::t_20263484b02bfd 9
+src/pigeon/store/migrations/postgres/20261121_165700_initial.sql
+  s_ac6216cbfd8a06::t_e567c541ee83e4 1-68
+uv.lock
+  s_ac6216cbfd8a06::t_eebaba40d9d1e3 1254,1279,1500-1511
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "572cb4d1a37cdaf5d63123765157f9e38a4df10d",
+  "prompts": {},
+  "sessions": {
+    "s_ac6216cbfd8a06": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "179dd0fd-e408-405d-af3b-1c26e1426927",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
