@@ -1,0 +1,19 @@
+.github/workflows/discord-bot.yml
+  s_7341ea76e44dc3::t_cfbbd202edf536 19,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d7ea556d324f30af6628c6824800f933aec314e",
+  "prompts": {},
+  "sessions": {
+    "s_7341ea76e44dc3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f791b8d5-e952-46ea-ba2c-2496249e33bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
