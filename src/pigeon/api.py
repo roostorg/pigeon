@@ -15,6 +15,7 @@ from .schemas import (
     ClassifyRequest,
     ClassifyResponse,
     ModelSpecsResponse,
+    ModelsResponse,
     PolicyCreate,
     PolicyResponse,
     ModelSpecCreate,
@@ -45,6 +46,11 @@ def build_router(
     @router.get("/v1/modelspecs", response_model=ModelSpecsResponse)
     async def list_modelspecs(org: str = Depends(get_org)) -> ModelSpecsResponse:
         return ModelSpecsResponse(modelspecs=registry.list_signals(org))
+
+    @router.get("/v1/models", response_model=ModelsResponse)
+    async def list_models(org: str = Depends(get_org)) -> ModelsResponse:
+        """List available model specs in the caller's org, including model-card links."""
+        return ModelsResponse(models=registry.list_models(org))
 
     @router.post("/v1/modelspecs", response_model=ModelSpecCreate, status_code=201)
     async def register_modelspec(

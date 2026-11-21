@@ -18,6 +18,23 @@ def test_discover_lists_classifier_not_byop_base(client, auth):
     assert "cope-b" not in ids
 
 
+def test_list_models_returns_catalog_with_model_card_urls(client, auth):
+    assert client.get("/v1/models").status_code == 401
+    body = client.get("/v1/models", headers=auth).json()
+    by_id = {m["id"]: m for m in body["models"]}
+    assert "shieldgemma-2b" in by_id
+    assert "cope-b" in by_id
+    assert "shieldstral" in by_id
+    sg = by_id["shieldgemma-2b"]
+    assert sg["modelId"] == "google/shieldgemma-2b"
+    assert sg["modelCardUrl"] == "https://huggingface.co/google/shieldgemma-2b"
+    assert sg["enabled"] is True
+    assert sg["kind"] == "classifier"
+    assert by_id["cope-b"]["kind"] == "byop"
+    assert by_id["cope-b"]["modelId"] == "zentropi/cope-b"
+    assert by_id["cope-b"]["modelCardUrl"] == "https://huggingface.co/zentropi/cope-b"
+
+
 def test_discover_exposes_underlying_model_id(client, auth):
     body = client.get("/v1/modelspecs", headers=auth).json()
     sg = next(m for m in body["modelspecs"] if m["id"] == "shieldgemma-2b")

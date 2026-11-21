@@ -20,3 +20,4 @@ prompt:
 parser:
   type: verdict
 languages_validated: [en]
+model_card_url: https://huggingface.co/zentropi/cope-b

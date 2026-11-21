@@ -14,6 +14,10 @@ def test_classifier_kind():
     mfs = load_modelspecs(MODELSPECS_DIR)
     assert mfs["shieldgemma-2b"].kind == "classifier"
     assert mfs["shieldgemma-2b"].version == "3"  # coerced from YAML
+    assert (
+        mfs["shieldgemma-2b"].model_card_url
+        == "https://huggingface.co/google/shieldgemma-2b"
+    )
 
 
 def test_multimodal_byop_kind():

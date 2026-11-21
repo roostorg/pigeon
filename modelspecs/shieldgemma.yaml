@@ -13,3 +13,4 @@ parser:
   type: classifier
 labels: [harassment, hate, sexual, dangerous]
 languages_validated: [en]
+model_card_url: https://huggingface.co/google/shieldgemma-2b

@@ -39,14 +39,10 @@ It targets `@roostorg/coop-types` `^3.0.0`.
 
 ## What it does
 
-- **Discover** (`GET /v1/modelspecs`): lists the signals an org can use. Fixed-label
-  classifiers fan out to one label each; policy-bound BYOP custom models appear as a single
-  verdict signal.
-- **Classify** (`POST /v1/classify`): input in, normalized `[{label, score}]` out. The caller
-  never sees prompts, wire formats, or response paths.
-- **Policy management** (`POST /v1/policies`): author a policy against a policy-steerable base
-  (CoPE-B) to mint a versioned custom model. This is the "build a custom
-  model from an open-weight base" path.
+- **Discover** (`GET /v1/modelspecs`): lists the signals an org can use. Fixed-label classifiers fan out to one label each; policy-bound BYOP custom models appear as a single verdict signal.
+- **Models** (`GET /v1/models`): lists every available model spec in the org catalog (including BYOP bases), with `modelId` and optional `modelCardUrl` from each modelspec's `model_card_url` (an explicit docs/card link, not inferred from `model.id`).
+- **Classify** (`POST /v1/classify`): input in, normalized `[{label, score}]` out. The caller never sees prompts, wire formats, or response paths.
+- **Policy management** (`POST /v1/policies`): author a policy against a policy-steerable base (CoPE-B) to mint a versioned custom model. This is the "build a custom model from an open-weight base" path.
 
 ## Model kinds
 
@@ -146,6 +142,8 @@ Try it (dev token from `.env.example`):
 ```bash
 TOKEN="dev-token"
 curl -s localhost:8900/v1/modelspecs -H "Authorization: Bearer $TOKEN"
+curl -s localhost:8900/v1/models -H "Authorization: Bearer $TOKEN"
+
 
 curl -s localhost:8900/v1/classify -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
