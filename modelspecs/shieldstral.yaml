@@ -29,3 +29,4 @@ prompt:
 parser:
   type: logprob_yesno
 languages_validated: [en, fr, de, es, it, pt, nl, pl, ru, zh, ja, ko]
+model_card_url: https://huggingface.co/mistralai/Shieldstral-1.0-3B

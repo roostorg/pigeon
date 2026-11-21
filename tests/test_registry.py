@@ -24,6 +24,19 @@ def test_list_signals_exposes_classifiers_not_byop_bases(registry: Registry):
     assert "shieldstral" not in ids
 
 
+def test_list_models_includes_bases_and_model_card_urls(registry: Registry):
+    models = registry.list_models("org-a")
+    by_id = {item.id: item for item in models}
+    assert set(by_id) >= {"shieldgemma-2b", "cope-b", "shieldstral"}
+    gemma = by_id["shieldgemma-2b"]
+    assert gemma.modelId == "google/shieldgemma-2b"
+    assert gemma.modelCardUrl == "https://huggingface.co/google/shieldgemma-2b"
+    assert gemma.enabled is True
+    assert by_id["cope-b"].kind == "byop"
+    assert by_id["cope-b"].modelId == "zentropi/cope-b"
+    assert by_id["cope-b"].modelCardUrl == "https://huggingface.co/zentropi/cope-b"
+
+
 def test_list_signals_includes_bound_policies(registry: Registry):
     registry.store.upsert_policy("org-a", "harass", "cope-b", "Flag it.", "Harassment")
     summaries = registry.list_signals("org-a")

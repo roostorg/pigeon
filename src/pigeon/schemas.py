@@ -32,6 +32,29 @@ class ModelSpecsResponse(BaseModel):
     modelspecs: list[ModelSpecSummary]
 
 
+# ---- Catalog (GET /v1/models) ----
+
+
+class ModelCatalogEntry(BaseModel):
+    """One available model spec in the caller's org catalog."""
+
+    id: str
+    version: str
+    kind: Literal["classifier", "byop", "completion"]
+    # Underlying model id from the modelspec (provider-specific).
+    modelId: str
+    # Optional public model-card URL from the modelspec (`model_card_url`), if set.
+    modelCardUrl: Optional[str] = None
+    runtime: str
+    inputTypes: list[str]
+    enabled: bool
+    labels: list[str] = Field(default_factory=list)
+
+
+class ModelsResponse(BaseModel):
+    models: list[ModelCatalogEntry]
+
+
 class ModelSpecCreate(ModelSpec):
     model_config = ConfigDict(extra="forbid")
 

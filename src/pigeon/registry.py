@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Literal, Optional, cast
 
 from .modelspecs import ModelSpec
-from .schemas import LabelSpec, ModelSpecSummary
+from .schemas import LabelSpec, ModelCatalogEntry, ModelSpecSummary
 from .store import StoreProtocol
+
+ModelKind = Literal["classifier", "byop", "completion"]
 
 
 @dataclass
@@ -65,6 +67,43 @@ class Registry:
                 )
             )
         return summaries
+
+    def list_models(self, org_id: str) -> list[ModelCatalogEntry]:
+        """List every available model spec in the org catalog (not just Coop signals)."""
+        self.ensure_defaults(org_id)
+        enabled = {
+            row["model_name"]: row["spec_version"]
+            for row in self.store.enabled_bindings(org_id)
+        }
+        # Latest version per name (modelspec_versions is ordered by created_at).
+        latest_by_name: dict[str, ModelSpec] = {}
+        for row in self.store.modelspec_versions(org_id):
+            spec = self.store.get_modelspec(org_id, row["name"], row["version"])
+            if spec is not None:
+                latest_by_name[spec.name] = spec
+
+        entries: list[ModelCatalogEntry] = []
+        for name in sorted(latest_by_name):
+            spec = latest_by_name[name]
+            pin = enabled.get(name)
+            if pin is not None:
+                pinned = self.store.get_modelspec(org_id, name, pin)
+                if pinned is not None:
+                    spec = pinned
+            entries.append(
+                ModelCatalogEntry(
+                    id=spec.name,
+                    version=spec.version,
+                    kind=cast(ModelKind, spec.kind),
+                    modelId=spec.model.id,
+                    modelCardUrl=spec.model_card_url,
+                    runtime=spec.model.runtime,
+                    inputTypes=list(spec.input_types),
+                    enabled=name in enabled,
+                    labels=list(spec.labels),
+                )
+            )
+        return entries
 
     def _classifier_summary(self, mf: ModelSpec) -> ModelSpecSummary:
         labels = [LabelSpec(id=lbl, display=_titlecase(lbl)) for lbl in mf.labels]

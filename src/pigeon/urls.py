@@ -96,3 +96,13 @@ def validate_media_url(value: str) -> str:
     return validate_outbound_url(
         value, purpose="mediaUrl", allow_http_loopback=True, allow_private_http=False
     )
+
+
+def validate_model_card_url(value: str) -> str:
+    """Public model-card / docs URL declared on a modelspec (https only)."""
+    return validate_outbound_url(
+        value,
+        purpose="model_card_url",
+        allow_http_loopback=False,
+        allow_private_http=False,
+    )

@@ -6,7 +6,7 @@ from typing import Literal, Optional
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from .urls import validate_inference_endpoint
+from .urls import validate_inference_endpoint, validate_model_card_url
 
 Runtime = Literal["ollama", "vllm", "hf-inference", "endpoint"]
 Mode = Literal["signal", "completion"]
@@ -51,11 +51,21 @@ class ModelSpec(BaseModel):
     parser: ParserSpec = Field(default_factory=ParserSpec)
     labels: list[str] = Field(default_factory=list)
     languages_validated: list[str] = Field(default_factory=list)
+    # Optional public URL describing how the model was trained / how it works.
+    # Not inferred from model.id — set explicitly when importing/registering a spec.
+    model_card_url: Optional[str] = None
 
     @field_validator("version", mode="before")
     @classmethod
     def _stringify_version(cls, v: object) -> str:
         return str(v)
+
+    @field_validator("model_card_url")
+    @classmethod
+    def _validate_model_card_url(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value == "":
+            return None
+        return validate_model_card_url(value)
 
     @property
     def kind(self) -> str:
