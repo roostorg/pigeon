@@ -12,6 +12,7 @@ dependencies = [
     "httpx>=0.27",
     "litellm>=1.44",
     "psycopg[binary]>=3.2",
+    "psycopg-pool>=3.2",
 ]
 
 [project.optional-dependencies]

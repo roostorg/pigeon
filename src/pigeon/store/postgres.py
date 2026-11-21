@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import threading
 import time
 import uuid
 from contextlib import contextmanager
@@ -10,10 +9,14 @@ from typing import Iterator, Optional
 
 from ..modelspecs import ModelSpec, load_modelspecs
 from .errors import DuplicateError
+from .migrations import applied_postgres_migrations, run_postgres_migrations
 
-"""PostgreSQL implementation of the store protocol (psycopg3)."""
+"""PostgreSQL implementation of the store protocol (psycopg3 + psycopg_pool)."""
 
 _POLICY_VERSION_RETRIES = 8
+DEFAULT_POOL_MIN = 1
+DEFAULT_POOL_MAX = 10
+DEFAULT_POOL_TIMEOUT = 30.0
 
 
 class PostgresStore:
@@ -22,168 +25,69 @@ class PostgresStore:
         database_url: str,
         seed_dir: Optional[Path] = None,
         seed: bool = True,
+        *,
+        pool_min: int = DEFAULT_POOL_MIN,
+        pool_max: int = DEFAULT_POOL_MAX,
+        pool_timeout: float = DEFAULT_POOL_TIMEOUT,
     ):
-        self._database_url = database_url
+        from psycopg.rows import dict_row
+        from psycopg_pool import ConnectionPool
+
+        if pool_min < 1:
+            raise ValueError("pool_min must be at least 1")
+        if pool_max < pool_min:
+            raise ValueError("pool_max must be >= pool_min")
+        if pool_timeout <= 0 or pool_timeout != pool_timeout or pool_timeout == float("inf"):
+            raise ValueError("pool_timeout must be a positive finite number")
+
         self._seed_dir = seed_dir
         self._seed = seed
-        self._lock = threading.Lock()
-        # Autocommit for standalone statements so reads do not leave idle
-        # transactions open. Multi-statement writes use _transaction().
-        self._conn = self._connect()
-        self._init()
-
-    def _connect(self):
-        import psycopg
-        from psycopg.rows import dict_row
-
-        return psycopg.connect(
-            self._database_url, row_factory=dict_row, autocommit=True
+        # Autocommit on pooled connections so standalone reads never leave
+        # idle-in-transaction sessions. Multi-statement writes open an explicit
+        # transaction via conn.transaction(). check_connection evicts dead
+        # sockets automatically after a DB restart or idle proxy drop.
+        self._pool = ConnectionPool(
+            conninfo=database_url,
+            min_size=pool_min,
+            max_size=pool_max,
+            timeout=pool_timeout,
+            kwargs={"row_factory": dict_row, "autocommit": True},
+            check=ConnectionPool.check_connection,
+            open=True,
         )
-
-    def _ensure_conn(self) -> None:
-        """Reconnect if the socket was closed (DB restart, idle proxy drop)."""
-        if self._conn.closed:
-            self._conn = self._connect()
-
-    def _recover_conn(self) -> None:
         try:
-            if not self._conn.closed:
-                self._conn.close()
+            self._init()
         except Exception:
-            pass
-        self._conn = self._connect()
+            self._pool.close()
+            raise
 
     def close(self) -> None:
-        with self._lock:
-            if not self._conn.closed:
-                self._conn.close()
+        self._pool.close()
 
     @contextmanager
     def _transaction(self) -> Iterator:
-        """Hold the lock for a full write transaction (commit or rollback)."""
-        import psycopg
-
-        with self._lock:
-            try:
-                self._ensure_conn()
-            except psycopg.OperationalError:
-                self._recover_conn()
-            previous = True
-            try:
-                previous = self._conn.autocommit
-                self._conn.autocommit = False
-                yield self._conn
-                self._conn.commit()
-            except psycopg.OperationalError:
-                try:
-                    if not self._conn.closed:
-                        self._conn.rollback()
-                except Exception:
-                    pass
-                self._recover_conn()
-                raise
-            except Exception:
-                try:
-                    if not self._conn.closed:
-                        self._conn.rollback()
-                except Exception:
-                    pass
-                raise
-            finally:
-                # Never let cleanup mask the original error (e.g. dead socket).
-                try:
-                    if not self._conn.closed:
-                        self._conn.autocommit = previous
-                except Exception:
-                    pass
+        """Check out a pooled connection and run an atomic write transaction."""
+        with self._pool.connection() as conn:
+            with conn.transaction():
+                yield conn
 
     def _fetchall(self, sql: str, params: tuple | list = ()) -> list[dict]:
-        import psycopg
-
-        with self._lock:
-            try:
-                self._ensure_conn()
-                rows = self._conn.execute(sql, params).fetchall()
-            except psycopg.OperationalError:
-                self._recover_conn()
-                rows = self._conn.execute(sql, params).fetchall()
+        with self._pool.connection() as conn:
+            rows = conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
 
     def _fetchone(self, sql: str, params: tuple | list = ()) -> Optional[dict]:
-        import psycopg
-
-        with self._lock:
-            try:
-                self._ensure_conn()
-                row = self._conn.execute(sql, params).fetchone()
-            except psycopg.OperationalError:
-                self._recover_conn()
-                row = self._conn.execute(sql, params).fetchone()
+        with self._pool.connection() as conn:
+            row = conn.execute(sql, params).fetchone()
         return dict(row) if row else None
 
     def _init(self) -> None:
-        with self._transaction() as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS orgs (
-                    id TEXT PRIMARY KEY,
-                    display_name TEXT NOT NULL,
-                    created_at DOUBLE PRECISION NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS api_tokens (
-                    id TEXT PRIMARY KEY,
-                    org_id TEXT NOT NULL REFERENCES orgs(id),
-                    name TEXT NOT NULL,
-                    token_hash TEXT NOT NULL UNIQUE,
-                    created_at DOUBLE PRECISION NOT NULL,
-                    revoked_at DOUBLE PRECISION
-                );
-                CREATE TABLE IF NOT EXISTS policies (
-                    org_id TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    version INTEGER NOT NULL,
-                    base TEXT NOT NULL,
-                    base_version TEXT,
-                    policy_text TEXT NOT NULL,
-                    display TEXT NOT NULL,
-                    created_at DOUBLE PRECISION NOT NULL,
-                    PRIMARY KEY (org_id, name, version)
-                );
-                CREATE TABLE IF NOT EXISTS modelspec_versions (
-                    org_id TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    version TEXT NOT NULL,
-                    spec_json TEXT NOT NULL,
-                    source TEXT NOT NULL,
-                    created_at DOUBLE PRECISION NOT NULL,
-                    PRIMARY KEY (org_id, name, version)
-                );
-                CREATE TABLE IF NOT EXISTS org_model_bindings (
-                    org_id TEXT NOT NULL,
-                    model_name TEXT NOT NULL,
-                    spec_version TEXT NOT NULL,
-                    endpoint TEXT,
-                    credential_ref TEXT,
-                    enabled BOOLEAN NOT NULL DEFAULT TRUE,
-                    PRIMARY KEY (org_id, model_name)
-                );
-                """
-            )
-            # Greenfield CREATE IF NOT EXISTS does not add columns to older DBs.
-            # Check the catalog first: ALTER still takes an AccessExclusiveLock
-            # even with IF NOT EXISTS, which can block behind a live app connection.
-            has_base_version = conn.execute(
-                """
-                SELECT 1
-                FROM information_schema.columns
-                WHERE table_schema = current_schema()
-                  AND table_name = 'policies'
-                  AND column_name = 'base_version'
-                """
-            ).fetchone()
-            if has_base_version is None:
-                conn.execute("SET LOCAL lock_timeout = '5s'")
-                conn.execute("ALTER TABLE policies ADD COLUMN base_version TEXT")
+        with self._pool.connection() as conn:
+            run_postgres_migrations(conn)
+
+    def applied_migrations(self) -> list[dict]:
+        with self._pool.connection() as conn:
+            return applied_postgres_migrations(conn)
 
     def create_org(self, org_id: str, display_name: str) -> dict:
         import psycopg.errors

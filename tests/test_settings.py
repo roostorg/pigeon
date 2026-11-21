@@ -20,6 +20,9 @@ _ENV_VARS = (
     "PIGEON_DB_PATH",
     "PIGEON_DB_BACKEND",
     "PIGEON_DATABASE_URL",
+    "PIGEON_DB_POOL_MIN",
+    "PIGEON_DB_POOL_MAX",
+    "PIGEON_DB_POOL_TIMEOUT",
     "PIGEON_MEDIA_MAX_BYTES",
 )
 
@@ -139,6 +142,34 @@ def test_database_url_bad_scheme_rejected_with_explicit_backend(monkeypatch):
     monkeypatch.setenv("PIGEON_DATABASE_URL", "mysql://pigeon@127.0.0.1/pigeon")
     with pytest.raises(ValueError, match="PIGEON_DATABASE_URL must start with"):
         Settings.from_env()
+
+
+def test_db_pool_settings_defaults_and_validation(monkeypatch):
+    monkeypatch.setenv("PIGEON_ENV", "development")
+    defaults = Settings.from_env()
+    assert defaults.db_pool_min == 1
+    assert defaults.db_pool_max == 10
+    assert defaults.db_pool_timeout == 30.0
+
+    monkeypatch.setenv("PIGEON_DB_POOL_MIN", "2")
+    monkeypatch.setenv("PIGEON_DB_POOL_MAX", "8")
+    monkeypatch.setenv("PIGEON_DB_POOL_TIMEOUT", "12.5")
+    custom = Settings.from_env()
+    assert custom.db_pool_min == 2
+    assert custom.db_pool_max == 8
+    assert custom.db_pool_timeout == 12.5
+
+    monkeypatch.setenv("PIGEON_DB_POOL_MIN", "5")
+    monkeypatch.setenv("PIGEON_DB_POOL_MAX", "2")
+    with pytest.raises(ValueError, match="PIGEON_DB_POOL_MAX"):
+        Settings.from_env()
+
+    monkeypatch.setenv("PIGEON_DB_POOL_MIN", "1")
+    monkeypatch.setenv("PIGEON_DB_POOL_MAX", "5")
+    for raw in ("0", "-1", "nan", "inf", "nope"):
+        monkeypatch.setenv("PIGEON_DB_POOL_TIMEOUT", raw)
+        with pytest.raises(ValueError, match="PIGEON_DB_POOL_TIMEOUT"):
+            Settings.from_env()
 
 
 @pytest.mark.parametrize("environment", ["development", "production"])

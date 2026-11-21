@@ -27,6 +27,9 @@ def create_store(
     database_url: Optional[str] = None,
     seed_dir: Optional[Path] = None,
     seed: bool = True,
+    pool_min: int = 1,
+    pool_max: int = 10,
+    pool_timeout: float = 30.0,
 ) -> StoreProtocol:
     """Build the configured store implementation."""
     if backend == "sqlite":
@@ -38,7 +41,14 @@ def create_store(
             raise ValueError("database_url is required when backend is postgres")
         from .postgres import PostgresStore
 
-        return PostgresStore(database_url, seed_dir=seed_dir, seed=seed)
+        return PostgresStore(
+            database_url,
+            seed_dir=seed_dir,
+            seed=seed,
+            pool_min=pool_min,
+            pool_max=pool_max,
+            pool_timeout=pool_timeout,
+        )
     raise ValueError(f"unsupported store backend '{backend}'")
 
 

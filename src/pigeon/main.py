@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI
@@ -33,6 +34,9 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         database_url=settings.database_url,
         seed_dir=settings.modelspecs_dir,
         seed=True,
+        pool_min=settings.db_pool_min,
+        pool_max=settings.db_pool_max,
+        pool_timeout=settings.db_pool_timeout,
     )
     registry = Registry(store)
     provider = _make_provider(settings)
@@ -43,6 +47,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             store.seed_from_directory(settings.modelspecs_dir, org["id"])
     get_auth = make_auth(settings, store)
 
-    app = FastAPI(title="Pigeon", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        try:
+            yield
+        finally:
+            store.close()
+
+    app = FastAPI(title="Pigeon", version="0.1.0", lifespan=lifespan)
     app.include_router(build_router(registry, provider, get_auth, settings.token_pepper))
     return app

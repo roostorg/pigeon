@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
 from pigeon.modelspecs import ModelSpec
 from pigeon.store import DuplicateError, create_store
+from pigeon.store.migrations import Migration, run_postgres_migrations
 from pigeon.tokens import hash_token
 
 from .conftest import MODELSPECS_DIR
@@ -122,3 +124,55 @@ def test_postgres_seed_is_idempotent(store):
     second = store.seed_from_directory(MODELSPECS_DIR, org_id)
     assert first == 0  # already seeded by create_org
     assert second == 0
+
+
+def test_postgres_migrations_recorded_and_idempotent(store):
+    applied = store.applied_migrations()
+    versions = [row["version"] for row in applied]
+    assert "20261121_165700" in versions
+    with store._pool.connection() as conn:
+        assert run_postgres_migrations(conn) == []
+
+
+def test_postgres_migration_runner_applies_incremental_in_isolated_schema(store):
+    from psycopg import sql
+
+    schema = f"test_mig_{uuid.uuid4().hex[:8]}"
+    with store._pool.connection() as conn:
+        conn.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
+        try:
+            conn.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema)))
+            first = run_postgres_migrations(conn)
+            assert first == ["20261121_165700"]
+            assert run_postgres_migrations(conn) == []
+            extra = Migration(
+                version="20261121_170000",
+                name="test_extra_col",
+                sql="ALTER TABLE orgs ADD COLUMN notes TEXT;",
+            )
+            second = run_postgres_migrations(conn, migrations=[extra])
+            assert second == ["20261121_170000"]
+            assert run_postgres_migrations(conn, migrations=[extra]) == []
+        finally:
+            conn.execute("SET search_path TO public")
+            conn.execute(
+                sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(schema))
+            )
+
+
+def test_postgres_concurrent_policy_upsert_across_pool(store):
+    org_id = f"pg-{uuid.uuid4().hex[:8]}"
+    store.create_org(org_id, "PG Org")
+
+    def write(i: int) -> int:
+        return store.upsert_policy(
+            org_id, "concurrent-pol", "cope-b", f"Rule {i}", "Concurrent"
+        )
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        versions = list(pool.map(write, range(6)))
+
+    assert sorted(versions) == [1, 2, 3, 4, 5, 6]
+    latest = store.get_policy(org_id, "concurrent-pol")
+    assert latest is not None
+    assert latest["version"] == 6
